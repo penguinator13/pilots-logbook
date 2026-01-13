@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Data directory (will be mounted as volume)
+data/
+*.db
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Node modules (will be installed in container)
+node_modules/
+
+# Documentation
+README.md
+CLAUDE.md
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Backup files
+*.backup
+*.bak

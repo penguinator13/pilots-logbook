@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Pilot's Logbook</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1 class="login-title">Pilot's Logbook</h1>
+                <p class="login-subtitle">Pilot Flight Log System</p>
+            </div>
+
+            <!-- Error Alert -->
+            <div id="errorAlert" class="alert alert-error hidden"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" id="username" name="username" class="form-input" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/login.js"></script>
+</body>
+</html>

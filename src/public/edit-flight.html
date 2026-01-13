@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Flight - Pilot's Logbook</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <a href="/dashboard.html" class="navbar-brand">Pilot's Logbook</a>
+                <button class="navbar-toggle" id="navToggle">☰</button>
+                <ul class="navbar-nav" id="navMenu">
+                    <li><a href="/dashboard.html">Dashboard</a></li>
+                    <li><a href="/add-flight.html">Add Flight</a></li>
+                    <li><a href="/flights.html">View Flights</a></li>
+                    <li><a href="/settings.html">Settings</a></li>
+                    <li><a href="#" id="logoutBtn">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
+        <div class="container-narrow">
+            <h1 class="mb-2">Edit Flight</h1>
+            <p class="text-muted mb-4">Update flight entry details</p>
+
+            <!-- Loading Spinner -->
+            <div id="loading" class="spinner"></div>
+
+            <!-- Success Alert -->
+            <div id="successAlert" class="alert alert-success hidden"></div>
+
+            <!-- Error Alert -->
+            <div id="errorAlert" class="alert alert-error hidden"></div>
+
+            <!-- Flight Entry Form -->
+            <form id="flightForm" class="card hidden">
+                <input type="hidden" id="flightId" name="id">
+
+                <!-- Date -->
+                <div class="form-group">
+                    <label for="date" class="form-label required">Date</label>
+                    <input type="date" id="date" name="date" class="form-input" required>
+                    <div class="form-help">Flight date cannot be in the future</div>
+                </div>
+
+                <!-- Aircraft Category -->
+                <div class="form-group">
+                    <label class="form-label">Aircraft Category</label>
+                    <div class="form-check">
+                        <input type="radio" id="category_helicopter" name="aircraft_category" value="Helicopter" class="form-check-input" checked>
+                        <label for="category_helicopter" class="form-check-label">Helicopter</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" id="category_aeroplane" name="aircraft_category" value="Aeroplane" class="form-check-input">
+                        <label for="category_aeroplane" class="form-check-label">Aeroplane</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" id="category_simulator" name="aircraft_category" value="Simulator" class="form-check-input">
+                        <label for="category_simulator" class="form-check-label">Simulator</label>
+                    </div>
+                </div>
+
+                <!-- Engine Type -->
+                <div class="form-group">
+                    <label class="form-label">Engine Type</label>
+                    <div class="form-check">
+                        <input type="radio" id="engine_single" name="engine_type" value="Single Engine" class="form-check-input" checked>
+                        <label for="engine_single" class="form-check-label">Single Engine</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" id="engine_multi" name="engine_type" value="Multi Engine" class="form-check-input">
+                        <label for="engine_multi" class="form-check-label">Multi Engine</label>
+                    </div>
+                </div>
+
+                <!-- Aircraft Type -->
+                <div class="form-group">
+                    <label for="aircraft_type" class="form-label required">Aircraft Type</label>
+                    <select id="aircraft_type" name="aircraft_type" class="form-select" required>
+                        <option value="">Select aircraft type</option>
+                        <option value="R22">R22</option>
+                        <option value="R44">R44</option>
+                        <option value="AS350B2">AS350B2</option>
+                        <option value="AS350B3">AS350B3</option>
+                        <option value="H125">H125</option>
+                        <option value="B206">B206</option>
+                        <option value="Bell 212">Bell 212</option>
+                    </select>
+                </div>
+
+                <!-- Registration -->
+                <div class="form-group">
+                    <label for="registration" class="form-label">Registration</label>
+                    <input type="text" id="registration" name="registration" class="form-input" placeholder="e.g., C-GXXX" style="text-transform: uppercase;">
+                </div>
+
+                <!-- Pilot in Command -->
+                <div class="form-group">
+                    <label for="pic" class="form-label">Pilot in Command</label>
+                    <input type="text" id="pic" name="pic" class="form-input" placeholder="Pilot name">
+                </div>
+
+                <!-- Co-pilot/Student -->
+                <div class="form-group">
+                    <label for="copilot" class="form-label">Co-pilot / Student</label>
+                    <input type="text" id="copilot" name="copilot" class="form-input" placeholder="Co-pilot or student name">
+                </div>
+
+                <!-- Flight Details/Route -->
+                <div class="form-group">
+                    <label for="route" class="form-label">Flight Details / Route</label>
+                    <textarea id="route" name="route" class="form-textarea" placeholder="Describe the flight route and details"></textarea>
+                </div>
+
+                <!-- Flight Time -->
+                <div class="form-group">
+                    <label for="flight_time" class="form-label required">Total Flight Time (hours)</label>
+                    <input type="number" id="flight_time" name="flight_time" class="form-input" step="any" min="0.1" placeholder="e.g., 1.5" required>
+                    <div class="form-help">Enter decimal hours (e.g., 1.5 for 1 hour 30 minutes)</div>
+                </div>
+
+                <!-- Day/Night Hours -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="day_hours" class="form-label">Day Hours</label>
+                        <input type="number" id="day_hours" name="day_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="night_hours" class="form-label">Night Hours</label>
+                        <input type="number" id="night_hours" name="night_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                </div>
+                <div id="timeWarning" class="form-error hidden">
+                    Warning: Day + Night hours should equal Total Flight Time
+                </div>
+
+                <!-- Flight Type -->
+                <div class="form-group">
+                    <label class="form-label">Flight Type</label>
+                    <div class="form-check">
+                        <input type="radio" id="type_dual" name="flight_type" value="Dual" class="form-check-input">
+                        <label for="type_dual" class="form-check-label">Dual</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" id="type_pic" name="flight_type" value="PIC" class="form-check-input">
+                        <label for="type_pic" class="form-check-label">PIC</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" id="type_solo" name="flight_type" value="Solo" class="form-check-input">
+                        <label for="type_solo" class="form-check-label">Solo</label>
+                    </div>
+                </div>
+
+                <!-- Helicopter-specific operations hours -->
+                <div class="form-group">
+                    <label class="form-label">Special Operations (Hours)</label>
+                    <div class="form-help mb-2">Track time spent on specialized operations within the flight</div>
+                </div>
+
+                <!-- Default specialty fields -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="longline_hours" class="form-label">Longline / Sling</label>
+                        <input type="number" id="longline_hours" name="longline_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="mountain_hours" class="form-label">Mountain Ops</label>
+                        <input type="number" id="mountain_hours" name="mountain_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="instructor_hours" class="form-label">Instructor Time</label>
+                        <input type="number" id="instructor_hours" name="instructor_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="crosscountry_hours" class="form-label">Cross-Country</label>
+                        <input type="number" id="crosscountry_hours" name="crosscountry_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="night_vision_hours" class="form-label">Night Vision</label>
+                        <input type="number" id="night_vision_hours" name="night_vision_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="instrument_hours" class="form-label">Instrument</label>
+                        <input type="number" id="instrument_hours" name="instrument_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="simulated_instrument_hours" class="form-label">Simulated Instrument</label>
+                        <input type="number" id="simulated_instrument_hours" name="simulated_instrument_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="ground_instrument_hours" class="form-label">Ground Instrument</label>
+                        <input type="number" id="ground_instrument_hours" name="ground_instrument_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                </div>
+
+                <!-- Custom Fields Container -->
+                <div id="customFieldsContainer"></div>
+
+                <!-- Takeoffs -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="takeoffs_day" class="form-label">Day Takeoffs</label>
+                        <input type="number" id="takeoffs_day" name="takeoffs_day" class="form-input" min="0" value="0" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="takeoffs_night" class="form-label">Night Takeoffs</label>
+                        <input type="number" id="takeoffs_night" name="takeoffs_night" class="form-input" min="0" value="0" placeholder="0">
+                    </div>
+                </div>
+
+                <!-- Landings -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="landings_day" class="form-label">Day Landings</label>
+                        <input type="number" id="landings_day" name="landings_day" class="form-input" min="0" value="0" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="landings_night" class="form-label">Night Landings</label>
+                        <input type="number" id="landings_night" name="landings_night" class="form-input" min="0" value="0" placeholder="0">
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="btn-group mt-3">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <span id="submitText">Update Flight</span>
+                    </button>
+                    <a href="/flights.html" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script src="/js/flight-form.js"></script>
+</body>
+</html>

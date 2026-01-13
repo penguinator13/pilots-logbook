@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Pilot's Logbook</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <a href="/dashboard.html" class="navbar-brand">Pilot's Logbook</a>
+                <button class="navbar-toggle" id="navToggle">☰</button>
+                <ul class="navbar-nav" id="navMenu">
+                    <li><a href="/dashboard.html" class="active">Dashboard</a></li>
+                    <li><a href="/add-flight.html">Add Flight</a></li>
+                    <li><a href="/flights.html">View Flights</a></li>
+                    <li><a href="/settings.html">Settings</a></li>
+                    <li><a href="#" id="logoutBtn">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container" style="padding-top: 2rem; padding-bottom: 2rem;">
+        <div class="dashboard-header">
+            <h1 class="dashboard-title">Flight Dashboard</h1>
+            <p class="text-muted">Overview of your flight hours and activity</p>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading" class="spinner"></div>
+
+        <!-- Error Alert -->
+        <div id="errorAlert" class="alert alert-error hidden"></div>
+
+        <!-- Stats Grid -->
+        <div id="statsContainer" class="hidden">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Hours</div>
+                    <div class="stat-value" id="totalHours">0.0</div>
+                    <div class="stat-subtitle">All time flight hours</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Flights</div>
+                    <div class="stat-value" id="totalFlights">0</div>
+                    <div class="stat-subtitle">Number of flights logged</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Day Hours</div>
+                    <div class="stat-value" id="dayHours">0.0</div>
+                    <div class="stat-subtitle">Daylight flying time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Night Hours</div>
+                    <div class="stat-value" id="nightHours">0.0</div>
+                    <div class="stat-subtitle">Night flying time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Dual Hours</div>
+                    <div class="stat-value" id="dualHours">0.0</div>
+                    <div class="stat-subtitle">Training time received</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">PIC Hours</div>
+                    <div class="stat-value" id="picHours">0.0</div>
+                    <div class="stat-subtitle">Pilot in command time</div>
+                </div>
+            </div>
+
+            <!-- Hours by Aircraft Type -->
+            <div class="card">
+                <h2 class="card-header">Hours by Aircraft Type</h2>
+                <div id="aircraftBreakdown">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Recent Flights -->
+            <div class="card">
+                <h2 class="card-header">Recent Flights</h2>
+                <div id="recentFlightsContainer">
+                    <p class="text-muted">No flights recorded yet</p>
+                </div>
+                <div class="mt-3 text-center">
+                    <a href="/flights.html" class="btn btn-secondary">View All Flights</a>
+                    <a href="/add-flight.html" class="btn btn-primary">Add New Flight</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
