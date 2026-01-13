@@ -1,6 +1,6 @@
-# Helicopter Logbook
+# Pilot's Logbook
 
-A self-hosted web application for helicopter pilots to track and manage their flight hours. Built with simplicity and mobile accessibility in mind.
+A self-hosted web application for pilots to track and manage their flight hours. Built with simplicity and mobile accessibility in mind.
 
 ## Features
 
@@ -46,19 +46,20 @@ A self-hosted web application for helicopter pilots to track and manage their fl
    cd logbook
    ```
 
-2. **Create a `.env` file** (optional but recommended):
+2. **Create a `.env` file** (required for production):
    ```bash
-   cat > .env << EOF
-   SESSION_SECRET=your-random-secret-key-here
-   ADMIN_USERNAME=your-username
-   ADMIN_PASSWORD=your-secure-password
-   EOF
+   # Copy the example file
+   cp .env.example .env
+
+   # Edit with your settings
+   nano .env
    ```
 
-   **Important**: Change the default credentials! Generate a random session secret:
-   ```bash
-   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-   ```
+   **Important**: Change these values:
+   - `SESSION_SECRET` - Generate with: `openssl rand -hex 32`
+   - `ADMIN_USERNAME` - Your desired username
+   - `ADMIN_PASSWORD` - Your secure password
+   - `HOST_PORT` - Change if port 3000 is already in use
 
 3. **Create the data directory**:
    ```bash
@@ -71,36 +72,37 @@ A self-hosted web application for helicopter pilots to track and manage their fl
    ```
 
 5. **Access the application**:
-   - Open your browser and navigate to `http://localhost:3000`
-   - Login with your credentials (default: `admin` / `changeme`)
-   - **Change your password immediately** by editing the database or rebuilding with new credentials
+   - Open your browser and navigate to `http://localhost:3000` (or your configured `HOST_PORT`)
+   - Login with your credentials from the `.env` file
+   - Start logging flights!
 
 ## Configuration
 
 ### Environment Variables
 
-All configuration is done through environment variables. You can set these in:
-- A `.env` file in the project root
-- Directly in `docker-compose.yml`
-- At runtime with `docker run -e VARIABLE=value`
+All configuration is done through environment variables. Create a `.env` file (use `.env.example` as a template):
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `NODE_ENV` | Application environment | `production` |
-| `PORT` | Application port | `3000` |
-| `DB_PATH` | Path to SQLite database | `/data/logbook.db` |
-| `SESSION_SECRET` | Secret key for session encryption | `change-this-secret-in-production` |
+| `SESSION_SECRET` | Secret key for session encryption | (required - change this!) |
 | `ADMIN_USERNAME` | Initial admin username | `admin` |
 | `ADMIN_PASSWORD` | Initial admin password | `changeme` |
+| `PORT` | Internal application port | `3000` |
+| `HOST_PORT` | External port to access app | `3000` |
+| `DB_PATH` | Path to SQLite database (inside container) | `/app/data/logbook.db` |
+| `DATA_PATH` | Path to data directory on host | `./data` |
+| `CONTAINER_NAME` | Docker container name | `pilots-logbook` |
 
-### Port Mapping
+### Port Configuration
 
-By default, the application runs on port 3000. To change this, edit `docker-compose.yml`:
+To use a different port (e.g., if 3000 is already in use), set in your `.env` file:
 
-```yaml
-ports:
-  - "8080:3000"  # Maps host port 8080 to container port 3000
+```bash
+HOST_PORT=8080  # Access via http://localhost:8080
+PORT=3000       # Internal container port (usually leave as 3000)
 ```
+
+Then restart: `docker-compose down && docker-compose up -d`
 
 ## Usage
 

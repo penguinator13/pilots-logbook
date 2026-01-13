@@ -1,27 +1,27 @@
 services:
   logbook:
     build: .
-    container_name: helicopter-logbook
+    container_name: ${CONTAINER_NAME:-pilots-logbook}
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${HOST_PORT:-3000}:${PORT:-3000}"
     volumes:
       # Persistent storage for SQLite database
-      - ./data:/data
+      - ${DATA_PATH:-./data}:/app/data
     environment:
       # Application settings
       NODE_ENV: production
-      PORT: 3000
+      PORT: ${PORT:-3000}
 
       # Database
-      DB_PATH: /data/logbook.db
+      DB_PATH: ${DB_PATH:-/app/data/logbook.db}
 
       # Security - CHANGE THESE VALUES!
       SESSION_SECRET: ${SESSION_SECRET:-change-this-to-a-random-string-in-production}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/auth/me', (r) => {process.exit(r.statusCode === 401 ? 0 : 1)})"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:${PORT:-3000}/api/auth/me', (r) => {process.exit(r.statusCode === 401 ? 0 : 1)})"]
       interval: 30s
       timeout: 3s
       retries: 3
