@@ -351,7 +351,7 @@ async function submitForm() {
             aircraft_category: document.querySelector('input[name="aircraft_category"]:checked').value,
             engine_type: document.querySelector('input[name="engine_type"]:checked').value,
             aircraft_type: document.getElementById('aircraft_type').value,
-            registration: document.getElementById('registration').value || null,
+            registration: document.getElementById('registration').value.toUpperCase() || null,
             pic: document.getElementById('pic').value || null,
             copilot: document.getElementById('copilot').value || null,
             route: document.getElementById('route').value || null,

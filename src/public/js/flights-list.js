@@ -263,7 +263,7 @@ function displayFlights(flights) {
         <tr>
             <td>${formatDate(flight.date)}</td>
             <td>${escapeHtml(flight.aircraft_type)}</td>
-            <td>${escapeHtml(flight.registration || '-')}</td>
+            <td class="registration-cell">${escapeHtml(flight.registration || '-')}</td>
             <td>${escapeHtml(truncate(flight.route || '-', 40))}</td>
             <td>${flight.flight_time.toFixed(1)} hrs</td>
             <td>${escapeHtml(flight.flight_type)}</td>
