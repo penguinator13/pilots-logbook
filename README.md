@@ -5,22 +5,13 @@ A self-hosted web application for pilots to track and manage their flight hours.
 ## Features
 
 - **Flight Entry Management**: Record detailed flight information including aircraft type, registration, route, and flight times
+- **Custom Aircraft Types**: Track any aircraft - comes with common defaults, but you can add unlimited custom aircraft types
 - **Dashboard**: View total flight hours, flight counts, and hours broken down by aircraft type
 - **Flight Log**: Browse, search, filter, and manage all flight entries
 - **CSV Export**: Export your flight data for backup or external analysis
 - **Mobile-Responsive**: Optimized for field entry on mobile devices
 - **Dark Mode**: Automatic dark mode support based on system preferences
 - **Single User Authentication**: Simple session-based login for personal use
-
-## Supported Aircraft
-
-- R22
-- R44
-- AS350B2
-- AS350B3
-- H125
-- B206
-- Bell 212
 
 ## Technology Stack
 
