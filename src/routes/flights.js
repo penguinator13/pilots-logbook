@@ -217,6 +217,10 @@ router.post('/', (req, res) => {
     return res.status(400).json({ error: 'Flight date cannot be in the future' });
   }
 
+  // Determine flight_type for legacy compatibility (PIC if has PIC hours, else Dual if has dual hours, else PIC)
+  const flight_type = (parseFloat(day_pic) || 0) + (parseFloat(night_pic) || 0) > 0 ? 'PIC' :
+                      (parseFloat(day_dual) || 0) + (parseFloat(night_dual) || 0) > 0 ? 'Dual' : 'PIC';
+
   try {
     const stmt = db.prepare(`
       INSERT INTO flights (
@@ -224,11 +228,12 @@ router.post('/', (req, res) => {
         copilot_student, flight_details, flight_time_hours,
         day_pic, night_pic, day_dual, night_dual, day_sic, night_sic,
         day_cmnd_practice, night_cmnd_practice,
+        flight_type,
         longline_hours, mountain_hours, instructor_hours, crosscountry_hours,
         night_vision_hours, instrument_hours, simulated_instrument_hours, ground_instrument_hours,
         aircraft_category, engine_type,
         takeoffs_day, takeoffs_night, landings_day, landings_night
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const longline_hrs = parseFloat(longline_hours) || 0;
@@ -257,6 +262,7 @@ router.post('/', (req, res) => {
       parseFloat(night_sic) || 0,
       parseFloat(day_cmnd_practice) || 0,
       parseFloat(night_cmnd_practice) || 0,
+      flight_type,  // Legacy field for compatibility
       longline_hrs,  // Special operations hours
       mountain_hrs,
       instructor_hrs,
@@ -361,6 +367,10 @@ router.put('/:id', (req, res) => {
     return res.status(400).json({ error: 'Flight date cannot be in the future' });
   }
 
+  // Determine flight_type for legacy compatibility
+  const flight_type = (parseFloat(day_pic) || 0) + (parseFloat(night_pic) || 0) > 0 ? 'PIC' :
+                      (parseFloat(day_dual) || 0) + (parseFloat(night_dual) || 0) > 0 ? 'Dual' : 'PIC';
+
   try {
     const stmt = db.prepare(`
       UPDATE flights SET
@@ -368,6 +378,7 @@ router.put('/:id', (req, res) => {
         copilot_student = ?, flight_details = ?, flight_time_hours = ?,
         day_pic = ?, night_pic = ?, day_dual = ?, night_dual = ?,
         day_sic = ?, night_sic = ?, day_cmnd_practice = ?, night_cmnd_practice = ?,
+        flight_type = ?,
         longline_hours = ?, mountain_hours = ?, instructor_hours = ?, crosscountry_hours = ?,
         night_vision_hours = ?, instrument_hours = ?, simulated_instrument_hours = ?, ground_instrument_hours = ?,
         aircraft_category = ?, engine_type = ?,
@@ -401,6 +412,7 @@ router.put('/:id', (req, res) => {
       parseFloat(night_sic) || 0,
       parseFloat(day_cmnd_practice) || 0,
       parseFloat(night_cmnd_practice) || 0,
+      flight_type,  // Legacy compatibility field
       longline_hrs,  // Special operations hours
       mountain_hrs,
       instructor_hrs,
