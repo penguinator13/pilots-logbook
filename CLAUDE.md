@@ -20,9 +20,11 @@ CORE REQUIREMENTS:
    - Pilot in Command (text input)
    - Co-pilot/Student (text input)
    - Flight Details/Route (textarea)
-   - Flight Time Hours (decimal input, e.g., 1.5)
-   - Day/Night breakdown (two decimal inputs that should sum to total flight time)
-   - Flight Type: Dual, PIC, Solo (radio buttons)
+   - Flight Time Breakdown (8 fields, auto-calculates total):
+     * Day PIC, Night PIC
+     * Day Dual, Night Dual
+     * Day SIC (Second in Command), Night SIC
+     * Day Commanded Practice, Night Commanded Practice
    - Special Operations Hours: Longline/Sling, Mountain, Instructor, Cross-Country, Night Vision, Instrument, Simulated Instrument, Ground Instrument (decimal hour inputs)
    - Takeoffs: Day/Night (integer inputs)
    - Landings: Day/Night (integer inputs)
@@ -56,9 +58,8 @@ CORE REQUIREMENTS:
 
 4. DATA VALIDATION:
    - Date cannot be in the future
-   - Flight time must be > 0
-   - Day + Night hours should equal total flight time (warn if not)
-   - Required fields: Date, Aircraft Type, Flight Time
+   - Total flight time must be > 0 (calculated from breakdown fields)
+   - Required fields: Date, Aircraft Type, and at least one flight time breakdown field
 
 5. DOCKER SETUP:
    - Single Dockerfile
@@ -115,7 +116,7 @@ Please build this as a working, production-ready application that I can deploy i
 
 ## DEVELOPMENT PROGRESS
 
-Last updated: 2026-01-13
+Last updated: 2026-01-14
 
 ### ✅ COMPLETED - PRODUCTION-READY APPLICATION WITH ENHANCED FEATURES!
 
@@ -345,7 +346,21 @@ The application is **production-ready** and can be deployed immediately. All cor
 
 ### RECENT ENHANCEMENTS:
 
-**2026-01-13 (Latest Update - Evening):**
+**2026-01-14 (Latest Update):**
+1. **Flight Time Breakdown Implementation**: Complete restructuring of flight time tracking
+   - Removed single `flight_time` input field and `flight_type` radio buttons
+   - Implemented 8 detailed breakdown fields: Day PIC, Night PIC, Day Dual, Night Dual, Day SIC, Night SIC, Day Commanded Practice, Night Commanded Practice
+   - Total flight time now auto-calculates from breakdown fields
+   - Removed legacy `flight_type` field from INSERT/UPDATE operations (field remains in database for backwards compatibility but is no longer used)
+   - Validation now requires Date, Aircraft Type, and at least one flight time breakdown field
+   - Updated dashboard statistics to calculate from new breakdown fields
+   - CSV export updated to include all 8 breakdown columns
+2. **Visual Improvements**:
+   - Separated "Takeoffs & Landings" section from "Special Operations" section
+   - Added clarification that special operations hours do NOT count towards total flight time
+   - Real-time display of calculated total flight time as user enters breakdown values
+
+**2026-01-13 (Evening):**
 1. **Docker Health Check Fix**: Fixed container health check in docker-compose.yml
    - Changed `localhost` to `127.0.0.1` for IPv4 compatibility (prevents IPv6 ECONNREFUSED errors)
    - Updated expected status code from 401 to 200 to match actual `/api/auth/me` endpoint behavior
@@ -392,8 +407,7 @@ The application is **production-ready** and can be deployed immediately. All cor
 **Required Fields:**
 - `date` (DATE) - Flight date, cannot be in future
 - `aircraft_type` (TEXT) - Aircraft model (dropdown with defaults + custom)
-- `flight_time_hours` (REAL) - Total flight hours (must be > 0)
-- `flight_type` (TEXT) - Dual, PIC, or Solo
+- `flight_time_hours` (REAL) - Total flight hours (auto-calculated from breakdown fields, must be > 0)
 
 **Optional Core Fields:**
 - `aircraft_category` (TEXT) - Helicopter, Aeroplane, or Simulator (defaults to Helicopter)
@@ -403,9 +417,22 @@ The application is **production-ready** and can be deployed immediately. All cor
 - `copilot_student` (TEXT) - Co-pilot or student name
 - `flight_details` (TEXT) - Route and flight description
 
-**Time Breakdown (Optional, decimals):**
-- `day_hours` (REAL) - Daylight flying time
-- `night_hours` (REAL) - Night flying time
+**Flight Time Breakdown (at least one required, decimals):**
+- `day_pic` (REAL) - Day Pilot in Command hours
+- `night_pic` (REAL) - Night Pilot in Command hours
+- `day_dual` (REAL) - Day Dual (training/instruction) hours
+- `night_dual` (REAL) - Night Dual hours
+- `day_sic` (REAL) - Day Second in Command hours
+- `night_sic` (REAL) - Night Second in Command hours
+- `day_cmnd_practice` (REAL) - Day Commanded Practice hours
+- `night_cmnd_practice` (REAL) - Night Commanded Practice hours
+
+**Legacy Fields (no longer used but remain for backwards compatibility):**
+- `day_hours` (REAL) - Legacy daylight flying time field
+- `night_hours` (REAL) - Legacy night flying time field
+- `flight_type` (TEXT) - Legacy flight type field (was: Dual, PIC, or Solo)
+
+**Special Operations Hours (Optional, decimals):**
 - `longline_hours` (REAL) - Longline/sling operations time
 - `mountain_hours` (REAL) - Mountain operations time
 - `instructor_hours` (REAL) - Time spent instructing
