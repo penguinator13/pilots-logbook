@@ -603,11 +603,20 @@ router.get('/export/summary', (req, res) => {
     const totals = {
       totalFlights: flights.length,
       totalHours: 0,
-      dayHours: 0,
-      nightHours: 0,
-      dualHours: 0,
-      picHours: 0,
-      soloHours: 0,
+      dayPicHours: 0,
+      nightPicHours: 0,
+      dayDualHours: 0,
+      nightDualHours: 0,
+      daySicHours: 0,
+      nightSicHours: 0,
+      dayCmndPracticeHours: 0,
+      nightCmndPracticeHours: 0,
+      totalPicHours: 0,
+      totalDualHours: 0,
+      totalSicHours: 0,
+      totalCmndPracticeHours: 0,
+      totalDayHours: 0,
+      totalNightHours: 0,
       longlineHours: 0,
       mountainHours: 0,
       instructorHours: 0,
@@ -634,17 +643,32 @@ router.get('/export/summary', (req, res) => {
     flights.forEach(flight => {
       // Total hours
       totals.totalHours += flight.flight_time_hours || 0;
-      totals.dayHours += flight.day_hours || 0;
-      totals.nightHours += flight.night_hours || 0;
 
-      // Flight type hours
-      if (flight.flight_type === 'Dual') {
-        totals.dualHours += flight.flight_time_hours || 0;
-      } else if (flight.flight_type === 'PIC') {
-        totals.picHours += flight.flight_time_hours || 0;
-      } else if (flight.flight_type === 'Solo') {
-        totals.soloHours += flight.flight_time_hours || 0;
-      }
+      // Flight time breakdown
+      const dayPic = flight.day_pic || 0;
+      const nightPic = flight.night_pic || 0;
+      const dayDual = flight.day_dual || 0;
+      const nightDual = flight.night_dual || 0;
+      const daySic = flight.day_sic || 0;
+      const nightSic = flight.night_sic || 0;
+      const dayCmndPractice = flight.day_cmnd_practice || 0;
+      const nightCmndPractice = flight.night_cmnd_practice || 0;
+
+      totals.dayPicHours += dayPic;
+      totals.nightPicHours += nightPic;
+      totals.dayDualHours += dayDual;
+      totals.nightDualHours += nightDual;
+      totals.daySicHours += daySic;
+      totals.nightSicHours += nightSic;
+      totals.dayCmndPracticeHours += dayCmndPractice;
+      totals.nightCmndPracticeHours += nightCmndPractice;
+
+      totals.totalPicHours += dayPic + nightPic;
+      totals.totalDualHours += dayDual + nightDual;
+      totals.totalSicHours += daySic + nightSic;
+      totals.totalCmndPracticeHours += dayCmndPractice + nightCmndPractice;
+      totals.totalDayHours += dayPic + dayDual + daySic + dayCmndPractice;
+      totals.totalNightHours += nightPic + nightDual + nightSic + nightCmndPractice;
 
       // Specialty hours
       totals.longlineHours += flight.longline_hours || 0;
@@ -704,11 +728,20 @@ router.get('/export/summary', (req, res) => {
 
     // Round all hours to 2 decimal places
     totals.totalHours = Math.round(totals.totalHours * 100) / 100;
-    totals.dayHours = Math.round(totals.dayHours * 100) / 100;
-    totals.nightHours = Math.round(totals.nightHours * 100) / 100;
-    totals.dualHours = Math.round(totals.dualHours * 100) / 100;
-    totals.picHours = Math.round(totals.picHours * 100) / 100;
-    totals.soloHours = Math.round(totals.soloHours * 100) / 100;
+    totals.dayPicHours = Math.round(totals.dayPicHours * 100) / 100;
+    totals.nightPicHours = Math.round(totals.nightPicHours * 100) / 100;
+    totals.dayDualHours = Math.round(totals.dayDualHours * 100) / 100;
+    totals.nightDualHours = Math.round(totals.nightDualHours * 100) / 100;
+    totals.daySicHours = Math.round(totals.daySicHours * 100) / 100;
+    totals.nightSicHours = Math.round(totals.nightSicHours * 100) / 100;
+    totals.dayCmndPracticeHours = Math.round(totals.dayCmndPracticeHours * 100) / 100;
+    totals.nightCmndPracticeHours = Math.round(totals.nightCmndPracticeHours * 100) / 100;
+    totals.totalPicHours = Math.round(totals.totalPicHours * 100) / 100;
+    totals.totalDualHours = Math.round(totals.totalDualHours * 100) / 100;
+    totals.totalSicHours = Math.round(totals.totalSicHours * 100) / 100;
+    totals.totalCmndPracticeHours = Math.round(totals.totalCmndPracticeHours * 100) / 100;
+    totals.totalDayHours = Math.round(totals.totalDayHours * 100) / 100;
+    totals.totalNightHours = Math.round(totals.totalNightHours * 100) / 100;
     totals.longlineHours = Math.round(totals.longlineHours * 100) / 100;
     totals.mountainHours = Math.round(totals.mountainHours * 100) / 100;
     totals.instructorHours = Math.round(totals.instructorHours * 100) / 100;
@@ -740,11 +773,22 @@ router.get('/export/summary', (req, res) => {
     report += `Total Hours: ${totals.totalHours}\n\n`;
 
     report += '--- FLIGHT TIME BREAKDOWN ---\n';
-    report += `Day Hours: ${totals.dayHours}\n`;
-    report += `Night Hours: ${totals.nightHours}\n`;
-    report += `Dual Hours: ${totals.dualHours}\n`;
-    report += `PIC Hours: ${totals.picHours}\n`;
-    report += `Solo Hours: ${totals.soloHours}\n\n`;
+    report += `Total Day Hours: ${totals.totalDayHours}\n`;
+    report += `Total Night Hours: ${totals.totalNightHours}\n\n`;
+
+    report += 'By Role:\n';
+    report += `  PIC (Pilot in Command): ${totals.totalPicHours} hours\n`;
+    report += `    - Day PIC: ${totals.dayPicHours}\n`;
+    report += `    - Night PIC: ${totals.nightPicHours}\n`;
+    report += `  Dual (Training/Instruction): ${totals.totalDualHours} hours\n`;
+    report += `    - Day Dual: ${totals.dayDualHours}\n`;
+    report += `    - Night Dual: ${totals.nightDualHours}\n`;
+    report += `  SIC (Second in Command): ${totals.totalSicHours} hours\n`;
+    report += `    - Day SIC: ${totals.daySicHours}\n`;
+    report += `    - Night SIC: ${totals.nightSicHours}\n`;
+    report += `  Commanded Practice: ${totals.totalCmndPracticeHours} hours\n`;
+    report += `    - Day Commanded Practice: ${totals.dayCmndPracticeHours}\n`;
+    report += `    - Night Commanded Practice: ${totals.nightCmndPracticeHours}\n\n`;
 
     report += '--- SPECIALTY OPERATIONS ---\n';
     report += `Longline/Sling Hours: ${totals.longlineHours}\n`;
