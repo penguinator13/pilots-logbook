@@ -208,36 +208,54 @@
                                 <div class="form-help">Enter your total flight hours in this aircraft type</div>
                             </div>
 
-                            <!-- Day/Night Hours -->
+                            <!-- Flight Time Breakdown -->
+                            <div class="form-group">
+                                <label class="form-label">Flight Time Breakdown (Optional)</label>
+                                <div class="form-help mb-2">Break down your hours by day/night and flight role - total hours will be calculated automatically</div>
+                            </div>
+
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="primeDayHours" class="form-label">Day Hours</label>
-                                    <input type="number" id="primeDayHours" name="primeDayHours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <label for="primeDayPic" class="form-label">Day PIC</label>
+                                    <input type="number" id="primeDayPic" name="primeDayPic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
                                 </div>
                                 <div class="form-group">
-                                    <label for="primeNightHours" class="form-label">Night Hours</label>
-                                    <input type="number" id="primeNightHours" name="primeNightHours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <label for="primeNightPic" class="form-label">Night PIC</label>
+                                    <input type="number" id="primeNightPic" name="primeNightPic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
                                 </div>
                             </div>
 
-                            <!-- Flight Type Breakdown -->
-                            <div class="form-group">
-                                <label class="form-label">Flight Time Breakdown (Optional)</label>
-                                <div class="form-help mb-2">Break down your hours by flight type</div>
-                            </div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="primeDualHours" class="form-label">Dual Hours</label>
-                                    <input type="number" id="primeDualHours" name="primeDualHours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <label for="primeDayDual" class="form-label">Day Dual</label>
+                                    <input type="number" id="primeDayDual" name="primeDayDual" class="form-input" step="any" min="0" value="0" placeholder="0.0">
                                 </div>
                                 <div class="form-group">
-                                    <label for="primePicHours" class="form-label">PIC Hours</label>
-                                    <input type="number" id="primePicHours" name="primePicHours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <label for="primeNightDual" class="form-label">Night Dual</label>
+                                    <input type="number" id="primeNightDual" name="primeNightDual" class="form-input" step="any" min="0" value="0" placeholder="0.0">
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label for="primeSoloHours" class="form-label">Solo Hours</label>
-                                <input type="number" id="primeSoloHours" name="primeSoloHours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="primeDaySic" class="form-label">Day SIC</label>
+                                    <input type="number" id="primeDaySic" name="primeDaySic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                </div>
+                                <div class="form-group">
+                                    <label for="primeNightSic" class="form-label">Night SIC</label>
+                                    <input type="number" id="primeNightSic" name="primeNightSic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="primeDayCmndPractice" class="form-label">Day Comm'd Practice</label>
+                                    <input type="number" id="primeDayCmndPractice" name="primeDayCmndPractice" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                </div>
+                                <div class="form-group">
+                                    <label for="primeNightCmndPractice" class="form-label">Night Comm'd Practice</label>
+                                    <input type="number" id="primeNightCmndPractice" name="primeNightCmndPractice" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                </div>
                             </div>
 
                             <!-- Specialty Operations -->

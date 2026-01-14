@@ -607,21 +607,20 @@ async function submitPrimeEntry() {
     submitText.textContent = 'Creating...';
 
     try {
-        // Collect form data
-        const totalHours = parseFloat(document.getElementById('primeTotalHours').value) || 0;
-        const dayHours = parseFloat(document.getElementById('primeDayHours').value) || 0;
-        const nightHours = parseFloat(document.getElementById('primeNightHours').value) || 0;
-        const dualHours = parseFloat(document.getElementById('primeDualHours').value) || 0;
-        const picHours = parseFloat(document.getElementById('primePicHours').value) || 0;
-        const soloHours = parseFloat(document.getElementById('primeSoloHours').value) || 0;
+        // Collect breakdown field data
+        const dayPic = parseFloat(document.getElementById('primeDayPic').value) || 0;
+        const nightPic = parseFloat(document.getElementById('primeNightPic').value) || 0;
+        const dayDual = parseFloat(document.getElementById('primeDayDual').value) || 0;
+        const nightDual = parseFloat(document.getElementById('primeNightDual').value) || 0;
+        const daySic = parseFloat(document.getElementById('primeDaySic').value) || 0;
+        const nightSic = parseFloat(document.getElementById('primeNightSic').value) || 0;
+        const dayCmndPractice = parseFloat(document.getElementById('primeDayCmndPractice').value) || 0;
+        const nightCmndPractice = parseFloat(document.getElementById('primeNightCmndPractice').value) || 0;
 
-        // Determine flight type based on breakdown
-        let flightType = 'PIC'; // Default
-        if (dualHours > picHours && dualHours > soloHours) {
-            flightType = 'Dual';
-        } else if (soloHours > picHours && soloHours > dualHours) {
-            flightType = 'Solo';
-        }
+        // Calculate totals from breakdown fields
+        const totalHours = dayPic + nightPic + dayDual + nightDual + daySic + nightSic + dayCmndPractice + nightCmndPractice;
+        const dayHours = dayPic + dayDual + daySic + dayCmndPractice;
+        const nightHours = nightPic + nightDual + nightSic + nightCmndPractice;
 
         const formData = {
             date: document.getElementById('primeDate').value,
@@ -635,7 +634,14 @@ async function submitPrimeEntry() {
             flight_time: totalHours,
             day_hours: dayHours,
             night_hours: nightHours,
-            flight_type: flightType,
+            day_pic: dayPic,
+            night_pic: nightPic,
+            day_dual: dayDual,
+            night_dual: nightDual,
+            day_sic: daySic,
+            night_sic: nightSic,
+            day_cmnd_practice: dayCmndPractice,
+            night_cmnd_practice: nightCmndPractice,
             longline_hours: parseFloat(document.getElementById('primeLonglineHours').value) || 0,
             mountain_hours: parseFloat(document.getElementById('primeMountainHours').value) || 0,
             instructor_hours: parseFloat(document.getElementById('primeInstructorHours').value) || 0,

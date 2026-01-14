@@ -785,9 +785,9 @@ router.get('/export/summary', (req, res) => {
     report += `SIC Hours: ${totals.totalSicHours}\n`;
     report += `Day SIC: ${totals.daySicHours}\n`;
     report += `Night SIC: ${totals.nightSicHours}\n`;
-    report += `Commanded Practice Hours: ${totals.totalCmndPracticeHours}\n`;
-    report += `Day Commanded Practice: ${totals.dayCmndPracticeHours}\n`;
-    report += `Night Commanded Practice: ${totals.nightCmndPracticeHours}\n\n`;
+    report += `Command Practice Hours: ${totals.totalCmndPracticeHours}\n`;
+    report += `Day Command Practice: ${totals.dayCmndPracticeHours}\n`;
+    report += `Night Command Practice: ${totals.nightCmndPracticeHours}\n\n`;
 
     report += '--- SPECIALTY OPERATIONS ---\n';
     report += `Longline/Sling Hours: ${totals.longlineHours}\n`;
