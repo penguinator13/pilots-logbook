@@ -42,7 +42,6 @@ function initializeDatabase() {
       flight_time_hours REAL NOT NULL,
       day_hours REAL DEFAULT 0,
       night_hours REAL DEFAULT 0,
-      flight_type TEXT NOT NULL,
       longline_sling INTEGER DEFAULT 0,
       mountain INTEGER DEFAULT 0,
       instructor INTEGER DEFAULT 0,

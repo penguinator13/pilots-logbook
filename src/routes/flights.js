@@ -14,7 +14,7 @@ router.get('/', (req, res) => {
   const aircraftFilter = req.query.aircraft_type || '';
 
   try {
-    let query = 'SELECT id, date, aircraft_type, registration, pilot_in_command, copilot_student, flight_details as route, flight_time_hours as flight_time, day_hours, night_hours, flight_type FROM flights WHERE user_id = ?';
+    let query = 'SELECT id, date, aircraft_type, registration, pilot_in_command, copilot_student, flight_details as route, flight_time_hours as flight_time, day_hours, night_hours FROM flights WHERE user_id = ?';
     let countQuery = 'SELECT COUNT(*) as total FROM flights WHERE user_id = ?';
     const params = [req.session.userId];
 
@@ -127,7 +127,7 @@ router.get('/stats/summary', (req, res) => {
     // Last 10 flights - select specific columns to avoid issues with missing columns
     const recentFlights = db.prepare(`
       SELECT id, date, aircraft_type, registration, pilot_in_command, copilot_student,
-             flight_details, flight_time_hours, day_hours, night_hours, flight_type,
+             flight_details, flight_time_hours, day_hours, night_hours,
              longline_hours, mountain_hours, instructor_hours,
              COALESCE(crosscountry_hours, 0) as crosscountry_hours,
              takeoffs_day, takeoffs_night, landings_day, landings_night
@@ -776,19 +776,18 @@ router.get('/export/summary', (req, res) => {
     report += `Total Day Hours: ${totals.totalDayHours}\n`;
     report += `Total Night Hours: ${totals.totalNightHours}\n\n`;
 
-    report += 'By Role:\n';
-    report += `  PIC (Pilot in Command): ${totals.totalPicHours} hours\n`;
-    report += `    - Day PIC: ${totals.dayPicHours}\n`;
-    report += `    - Night PIC: ${totals.nightPicHours}\n`;
-    report += `  Dual (Training/Instruction): ${totals.totalDualHours} hours\n`;
-    report += `    - Day Dual: ${totals.dayDualHours}\n`;
-    report += `    - Night Dual: ${totals.nightDualHours}\n`;
-    report += `  SIC (Second in Command): ${totals.totalSicHours} hours\n`;
-    report += `    - Day SIC: ${totals.daySicHours}\n`;
-    report += `    - Night SIC: ${totals.nightSicHours}\n`;
-    report += `  Commanded Practice: ${totals.totalCmndPracticeHours} hours\n`;
-    report += `    - Day Commanded Practice: ${totals.dayCmndPracticeHours}\n`;
-    report += `    - Night Commanded Practice: ${totals.nightCmndPracticeHours}\n\n`;
+    report += `PIC Hours: ${totals.totalPicHours}\n`;
+    report += `Day PIC: ${totals.dayPicHours}\n`;
+    report += `Night PIC: ${totals.nightPicHours}\n`;
+    report += `Dual Hours: ${totals.totalDualHours}\n`;
+    report += `Day Dual: ${totals.dayDualHours}\n`;
+    report += `Night Dual: ${totals.nightDualHours}\n`;
+    report += `SIC Hours: ${totals.totalSicHours}\n`;
+    report += `Day SIC: ${totals.daySicHours}\n`;
+    report += `Night SIC: ${totals.nightSicHours}\n`;
+    report += `Commanded Practice Hours: ${totals.totalCmndPracticeHours}\n`;
+    report += `Day Commanded Practice: ${totals.dayCmndPracticeHours}\n`;
+    report += `Night Commanded Practice: ${totals.nightCmndPracticeHours}\n\n`;
 
     report += '--- SPECIALTY OPERATIONS ---\n';
     report += `Longline/Sling Hours: ${totals.longlineHours}\n`;
