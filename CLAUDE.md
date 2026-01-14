@@ -345,7 +345,14 @@ The application is **production-ready** and can be deployed immediately. All cor
 
 ### RECENT ENHANCEMENTS:
 
-**2026-01-13 (Latest Update - Afternoon):**
+**2026-01-13 (Latest Update - Evening):**
+1. **Docker Health Check Fix**: Fixed container health check in docker-compose.yml
+   - Changed `localhost` to `127.0.0.1` for IPv4 compatibility (prevents IPv6 ECONNREFUSED errors)
+   - Updated expected status code from 401 to 200 to match actual `/api/auth/me` endpoint behavior
+   - Container now correctly reports as "healthy" when application is running
+   - Resolved SQLite database permission errors by setting proper permissions on data directory
+
+**2026-01-13 (Afternoon):**
 1. **Ground Instrument Hours**: Added 8th specialty hour field for ground instrument training time
 2. **Engine Type Selection**: Added Single Engine vs Multi Engine radio button classification (mutually exclusive)
 3. **Summary Export Feature**: New export that provides comprehensive experience totals:
@@ -357,6 +364,7 @@ The application is **production-ready** and can be deployed immediately. All cor
    - Totals by aircraft type (R22, AS350B2, etc.)
    - Takeoffs and landings totals
 4. **Enhanced CSV Export**: CSV now includes engine type field
+5. **Public Release**: Made GitHub repository public and published Docker image to GitHub Container Registry
 
 **2026-01-13 (Morning):**
 1. **Aircraft Category Selection**: Added ability to classify flights as Helicopter, Aeroplane, or Simulator with radio button selection
