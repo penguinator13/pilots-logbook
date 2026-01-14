@@ -111,6 +111,48 @@ function initializeDatabase() {
     // Column already exists
   }
 
+  // Add new flight time breakdown fields
+  try {
+    db.exec(`ALTER TABLE flights ADD COLUMN day_pic REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    db.exec(`ALTER TABLE flights ADD COLUMN night_pic REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    db.exec(`ALTER TABLE flights ADD COLUMN day_dual REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    db.exec(`ALTER TABLE flights ADD COLUMN night_dual REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    db.exec(`ALTER TABLE flights ADD COLUMN day_sic REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    db.exec(`ALTER TABLE flights ADD COLUMN night_sic REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    db.exec(`ALTER TABLE flights ADD COLUMN day_cmnd_practice REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    db.exec(`ALTER TABLE flights ADD COLUMN night_cmnd_practice REAL DEFAULT 0`);
+  } catch (e) {
+    // Column already exists
+  }
+
   // Create aircraft_types table for managing saved aircraft
   db.exec(`
     CREATE TABLE IF NOT EXISTS aircraft_types (

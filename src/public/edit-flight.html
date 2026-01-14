@@ -119,52 +119,68 @@
                     <textarea id="route" name="route" class="form-textarea" placeholder="Describe the flight route and details"></textarea>
                 </div>
 
-                <!-- Flight Time -->
+                <!-- Flight Time Breakdown -->
                 <div class="form-group">
-                    <label for="flight_time" class="form-label required">Total Flight Time (hours)</label>
-                    <input type="number" id="flight_time" name="flight_time" class="form-input" step="any" min="0.1" placeholder="e.g., 1.5" required>
-                    <div class="form-help">Enter decimal hours (e.g., 1.5 for 1 hour 30 minutes)</div>
+                    <label class="form-label">Flight Time (Hours)</label>
+                    <div class="form-help mb-2">Enter flight time breakdown - total will be calculated automatically</div>
                 </div>
 
-                <!-- Day/Night Hours -->
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="day_hours" class="form-label">Day Hours</label>
-                        <input type="number" id="day_hours" name="day_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                        <label for="day_pic" class="form-label">Day PIC</label>
+                        <input type="number" id="day_pic" name="day_pic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
                     </div>
                     <div class="form-group">
-                        <label for="night_hours" class="form-label">Night Hours</label>
-                        <input type="number" id="night_hours" name="night_hours" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                        <label for="night_pic" class="form-label">Night PIC</label>
+                        <input type="number" id="night_pic" name="night_pic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
                     </div>
                 </div>
-                <div id="timeWarning" class="form-error hidden">
-                    Warning: Day + Night hours should equal Total Flight Time
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="day_dual" class="form-label">Day Dual</label>
+                        <input type="number" id="day_dual" name="day_dual" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="night_dual" class="form-label">Night Dual</label>
+                        <input type="number" id="night_dual" name="night_dual" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
                 </div>
 
-                <!-- Flight Type -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="day_sic" class="form-label">Day SIC</label>
+                        <input type="number" id="day_sic" name="day_sic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="night_sic" class="form-label">Night SIC</label>
+                        <input type="number" id="night_sic" name="night_sic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="day_cmnd_practice" class="form-label">Day Comm'd Practice</label>
+                        <input type="number" id="day_cmnd_practice" name="day_cmnd_practice" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="night_cmnd_practice" class="form-label">Night Comm'd Practice</label>
+                        <input type="number" id="night_cmnd_practice" name="night_cmnd_practice" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                    </div>
+                </div>
+
+                <!-- Total Flight Time (calculated) -->
                 <div class="form-group">
-                    <label class="form-label">Flight Type</label>
-                    <div class="form-check">
-                        <input type="radio" id="type_dual" name="flight_type" value="Dual" class="form-check-input">
-                        <label for="type_dual" class="form-check-label">Dual</label>
-                    </div>
-                    <div class="form-check">
-                        <input type="radio" id="type_pic" name="flight_type" value="PIC" class="form-check-input">
-                        <label for="type_pic" class="form-check-label">PIC</label>
-                    </div>
-                    <div class="form-check">
-                        <input type="radio" id="type_solo" name="flight_type" value="Solo" class="form-check-input">
-                        <label for="type_solo" class="form-check-label">Solo</label>
-                    </div>
+                    <label class="form-label">Total Flight Time</label>
+                    <div id="total_flight_time" style="font-size: 1.25rem; font-weight: bold; color: var(--primary-color); padding: 0.5rem 0;">0.0 hours</div>
                 </div>
 
-                <!-- Helicopter-specific operations hours -->
+                <!-- Special Operations (Hours) -->
                 <div class="form-group">
                     <label class="form-label">Special Operations (Hours)</label>
-                    <div class="form-help mb-2">Track time spent on specialized operations within the flight</div>
+                    <div class="form-help mb-2">Track time spent on specialized operations - does NOT count towards total flight time</div>
                 </div>
 
-                <!-- Default specialty fields -->
                 <div class="form-row">
                     <div class="form-group">
                         <label for="longline_hours" class="form-label">Longline / Sling</label>
@@ -209,7 +225,12 @@
                 <!-- Custom Fields Container -->
                 <div id="customFieldsContainer"></div>
 
-                <!-- Takeoffs -->
+                <!-- Takeoffs & Landings -->
+                <div class="form-group">
+                    <label class="form-label">Takeoffs & Landings</label>
+                    <div class="form-help mb-2">Number of takeoff and landing events</div>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label for="takeoffs_day" class="form-label">Day Takeoffs</label>
@@ -221,7 +242,6 @@
                     </div>
                 </div>
 
-                <!-- Landings -->
                 <div class="form-row">
                     <div class="form-group">
                         <label for="landings_day" class="form-label">Day Landings</label>

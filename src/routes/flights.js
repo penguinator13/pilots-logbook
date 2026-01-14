@@ -48,8 +48,8 @@ router.get('/:id', (req, res) => {
       SELECT id, date, aircraft_type, registration,
              pilot_in_command as pic, copilot_student as copilot,
              flight_details as route, flight_time_hours as flight_time,
-             day_hours, night_hours, flight_type,
-             longline_sling as longline, mountain, instructor,
+             day_pic, night_pic, day_dual, night_dual, day_sic, night_sic,
+             day_cmnd_practice, night_cmnd_practice,
              longline_hours, mountain_hours, instructor_hours, crosscountry_hours,
              night_vision_hours, instrument_hours, simulated_instrument_hours, ground_instrument_hours,
              aircraft_category, engine_type,
@@ -90,15 +90,21 @@ router.get('/stats/summary', (req, res) => {
     ).get(req.session.userId);
     console.log('Total hours query OK');
 
-    // Total day and night hours
+    // Total day and night hours (sum from new fields)
     const dayNightHours = db.prepare(
-      'SELECT COALESCE(SUM(day_hours), 0) as day, COALESCE(SUM(night_hours), 0) as night FROM flights WHERE user_id = ?'
+      `SELECT
+        COALESCE(SUM(day_pic + day_dual + day_sic + day_cmnd_practice), 0) as day,
+        COALESCE(SUM(night_pic + night_dual + night_sic + night_cmnd_practice), 0) as night
+      FROM flights WHERE user_id = ?`
     ).get(req.session.userId);
     console.log('Day/Night hours query OK');
 
-    // Total dual and PIC hours
+    // Total dual and PIC hours (sum from new fields)
     const dualPicHours = db.prepare(
-      "SELECT COALESCE(SUM(CASE WHEN flight_type = 'Dual' THEN flight_time_hours ELSE 0 END), 0) as dual, COALESCE(SUM(CASE WHEN flight_type = 'PIC' THEN flight_time_hours ELSE 0 END), 0) as pic FROM flights WHERE user_id = ?"
+      `SELECT
+        COALESCE(SUM(day_dual + night_dual), 0) as dual,
+        COALESCE(SUM(day_pic + night_pic), 0) as pic
+      FROM flights WHERE user_id = ?`
     ).get(req.session.userId);
     console.log('Dual/PIC hours query OK:', dualPicHours);
 
@@ -158,10 +164,14 @@ router.post('/', (req, res) => {
     pic,
     copilot,
     route,
-    flight_time,
-    day_hours,
-    night_hours,
-    flight_type,
+    day_pic,
+    night_pic,
+    day_dual,
+    night_dual,
+    day_sic,
+    night_sic,
+    day_cmnd_practice,
+    night_cmnd_practice,
     longline_hours,
     mountain_hours,
     instructor_hours,
@@ -178,13 +188,25 @@ router.post('/', (req, res) => {
     landings_night
   } = req.body;
 
-  // Validation - only date, aircraft_type, and flight_time are required
-  if (!date || !aircraft_type || !flight_time) {
-    return res.status(400).json({ error: 'Missing required fields: Date, Aircraft Type, and Flight Time are required' });
+  // Calculate total flight time from component fields
+  const flight_time = (
+    (parseFloat(day_pic) || 0) +
+    (parseFloat(night_pic) || 0) +
+    (parseFloat(day_dual) || 0) +
+    (parseFloat(night_dual) || 0) +
+    (parseFloat(day_sic) || 0) +
+    (parseFloat(night_sic) || 0) +
+    (parseFloat(day_cmnd_practice) || 0) +
+    (parseFloat(night_cmnd_practice) || 0)
+  );
+
+  // Validation - only date and aircraft_type are required
+  if (!date || !aircraft_type) {
+    return res.status(400).json({ error: 'Missing required fields: Date and Aircraft Type are required' });
   }
 
-  if (parseFloat(flight_time) <= 0) {
-    return res.status(400).json({ error: 'Flight time must be greater than 0' });
+  if (flight_time <= 0) {
+    return res.status(400).json({ error: 'Total flight time must be greater than 0. Please enter at least one flight time value.' });
   }
 
   const flightDate = new Date(date);
@@ -199,13 +221,14 @@ router.post('/', (req, res) => {
     const stmt = db.prepare(`
       INSERT INTO flights (
         user_id, date, aircraft_type, registration, pilot_in_command,
-        copilot_student, flight_details, flight_time_hours, day_hours, night_hours,
-        flight_type, longline_sling, mountain, instructor,
+        copilot_student, flight_details, flight_time_hours,
+        day_pic, night_pic, day_dual, night_dual, day_sic, night_sic,
+        day_cmnd_practice, night_cmnd_practice,
         longline_hours, mountain_hours, instructor_hours, crosscountry_hours,
         night_vision_hours, instrument_hours, simulated_instrument_hours, ground_instrument_hours,
         aircraft_category, engine_type,
         takeoffs_day, takeoffs_night, landings_day, landings_night
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const longline_hrs = parseFloat(longline_hours) || 0;
@@ -225,14 +248,16 @@ router.post('/', (req, res) => {
       pic || '',
       copilot || '',
       route || '',
-      parseFloat(flight_time),
-      parseFloat(day_hours) || 0,
-      parseFloat(night_hours) || 0,
-      flight_type,
-      longline_hrs > 0 ? 1 : 0,  // Keep boolean flag for compatibility
-      mountain_hrs > 0 ? 1 : 0,
-      instructor_hrs > 0 ? 1 : 0,
-      longline_hrs,  // Hour fields
+      flight_time,  // Calculated total
+      parseFloat(day_pic) || 0,
+      parseFloat(night_pic) || 0,
+      parseFloat(day_dual) || 0,
+      parseFloat(night_dual) || 0,
+      parseFloat(day_sic) || 0,
+      parseFloat(night_sic) || 0,
+      parseFloat(day_cmnd_practice) || 0,
+      parseFloat(night_cmnd_practice) || 0,
+      longline_hrs,  // Special operations hours
       mountain_hrs,
       instructor_hrs,
       crosscountry_hrs,
@@ -283,10 +308,14 @@ router.put('/:id', (req, res) => {
     pic,
     copilot,
     route,
-    flight_time,
-    day_hours,
-    night_hours,
-    flight_type,
+    day_pic,
+    night_pic,
+    day_dual,
+    night_dual,
+    day_sic,
+    night_sic,
+    day_cmnd_practice,
+    night_cmnd_practice,
     longline_hours,
     mountain_hours,
     instructor_hours,
@@ -303,13 +332,25 @@ router.put('/:id', (req, res) => {
     landings_night
   } = req.body;
 
-  // Validation - only date, aircraft_type, and flight_time are required
-  if (!date || !aircraft_type || !flight_time) {
-    return res.status(400).json({ error: 'Missing required fields: Date, Aircraft Type, and Flight Time are required' });
+  // Calculate total flight time from component fields
+  const flight_time = (
+    (parseFloat(day_pic) || 0) +
+    (parseFloat(night_pic) || 0) +
+    (parseFloat(day_dual) || 0) +
+    (parseFloat(night_dual) || 0) +
+    (parseFloat(day_sic) || 0) +
+    (parseFloat(night_sic) || 0) +
+    (parseFloat(day_cmnd_practice) || 0) +
+    (parseFloat(night_cmnd_practice) || 0)
+  );
+
+  // Validation - only date and aircraft_type are required
+  if (!date || !aircraft_type) {
+    return res.status(400).json({ error: 'Missing required fields: Date and Aircraft Type are required' });
   }
 
-  if (parseFloat(flight_time) <= 0) {
-    return res.status(400).json({ error: 'Flight time must be greater than 0' });
+  if (flight_time <= 0) {
+    return res.status(400).json({ error: 'Total flight time must be greater than 0. Please enter at least one flight time value.' });
   }
 
   const flightDate = new Date(date);
@@ -325,8 +366,8 @@ router.put('/:id', (req, res) => {
       UPDATE flights SET
         date = ?, aircraft_type = ?, registration = ?, pilot_in_command = ?,
         copilot_student = ?, flight_details = ?, flight_time_hours = ?,
-        day_hours = ?, night_hours = ?, flight_type = ?,
-        longline_sling = ?, mountain = ?, instructor = ?,
+        day_pic = ?, night_pic = ?, day_dual = ?, night_dual = ?,
+        day_sic = ?, night_sic = ?, day_cmnd_practice = ?, night_cmnd_practice = ?,
         longline_hours = ?, mountain_hours = ?, instructor_hours = ?, crosscountry_hours = ?,
         night_vision_hours = ?, instrument_hours = ?, simulated_instrument_hours = ?, ground_instrument_hours = ?,
         aircraft_category = ?, engine_type = ?,
@@ -351,14 +392,16 @@ router.put('/:id', (req, res) => {
       pic || '',
       copilot || '',
       route || '',
-      parseFloat(flight_time),
-      parseFloat(day_hours) || 0,
-      parseFloat(night_hours) || 0,
-      flight_type,
-      longline_hrs > 0 ? 1 : 0,  // Keep boolean flag for compatibility
-      mountain_hrs > 0 ? 1 : 0,
-      instructor_hrs > 0 ? 1 : 0,
-      longline_hrs,  // Hour fields
+      flight_time,  // Calculated total
+      parseFloat(day_pic) || 0,
+      parseFloat(night_pic) || 0,
+      parseFloat(day_dual) || 0,
+      parseFloat(night_dual) || 0,
+      parseFloat(day_sic) || 0,
+      parseFloat(night_sic) || 0,
+      parseFloat(day_cmnd_practice) || 0,
+      parseFloat(night_cmnd_practice) || 0,
+      longline_hrs,  // Special operations hours
       mountain_hrs,
       instructor_hrs,
       crosscountry_hrs,
@@ -457,9 +500,14 @@ router.get('/export/csv', (req, res) => {
       'Co-pilot/Student',
       'Flight Details',
       'Total Hours',
-      'Day Hours',
-      'Night Hours',
-      'Flight Type',
+      'Day PIC',
+      'Night PIC',
+      'Day Dual',
+      'Night Dual',
+      'Day SIC',
+      'Night SIC',
+      'Day Commanded Practice',
+      'Night Commanded Practice',
       'Longline Hours',
       'Mountain Hours',
       'Instructor Hours',
@@ -501,9 +549,14 @@ router.get('/export/csv', (req, res) => {
         flight.copilot_student || '',
         `"${(flight.flight_details || '').replace(/"/g, '""')}"`,
         flight.flight_time_hours,
-        flight.day_hours || 0,
-        flight.night_hours || 0,
-        flight.flight_type,
+        flight.day_pic || 0,
+        flight.night_pic || 0,
+        flight.day_dual || 0,
+        flight.night_dual || 0,
+        flight.day_sic || 0,
+        flight.night_sic || 0,
+        flight.day_cmnd_practice || 0,
+        flight.night_cmnd_practice || 0,
         flight.longline_hours || 0,
         flight.mountain_hours || 0,
         flight.instructor_hours || 0,

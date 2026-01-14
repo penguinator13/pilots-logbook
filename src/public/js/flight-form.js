@@ -197,9 +197,16 @@ async function loadFlightData(id) {
         document.getElementById('pic').value = flight.pic || '';
         document.getElementById('copilot').value = flight.copilot || '';
         document.getElementById('route').value = flight.route || '';
-        document.getElementById('flight_time').value = flight.flight_time;
-        document.getElementById('day_hours').value = flight.day_hours;
-        document.getElementById('night_hours').value = flight.night_hours;
+
+        // Populate new flight time breakdown fields
+        document.getElementById('day_pic').value = flight.day_pic || 0;
+        document.getElementById('night_pic').value = flight.night_pic || 0;
+        document.getElementById('day_dual').value = flight.day_dual || 0;
+        document.getElementById('night_dual').value = flight.night_dual || 0;
+        document.getElementById('day_sic').value = flight.day_sic || 0;
+        document.getElementById('night_sic').value = flight.night_sic || 0;
+        document.getElementById('day_cmnd_practice').value = flight.day_cmnd_practice || 0;
+        document.getElementById('night_cmnd_practice').value = flight.night_cmnd_practice || 0;
 
         // Set aircraft category radio button
         const aircraftCategory = flight.aircraft_category || 'Helicopter';
@@ -213,12 +220,6 @@ async function loadFlightData(id) {
         const engineRadio = document.querySelector(`input[name="engine_type"][value="${engineType}"]`);
         if (engineRadio) {
             engineRadio.checked = true;
-        }
-
-        // Set flight type radio button
-        const flightTypeRadio = document.querySelector(`input[name="flight_type"][value="${flight.flight_type}"]`);
-        if (flightTypeRadio) {
-            flightTypeRadio.checked = true;
         }
 
         // Set special operations hours
@@ -255,6 +256,25 @@ async function loadFlightData(id) {
         loading.classList.add('hidden');
         form.classList.remove('hidden');
 
+        // After form is set up, recalculate total flight time
+        // This needs to happen after setupForm() runs
+        setTimeout(() => {
+            const totalDisplay = document.getElementById('total_flight_time');
+            if (totalDisplay) {
+                const total = (
+                    (parseFloat(document.getElementById('day_pic').value) || 0) +
+                    (parseFloat(document.getElementById('night_pic').value) || 0) +
+                    (parseFloat(document.getElementById('day_dual').value) || 0) +
+                    (parseFloat(document.getElementById('night_dual').value) || 0) +
+                    (parseFloat(document.getElementById('day_sic').value) || 0) +
+                    (parseFloat(document.getElementById('night_sic').value) || 0) +
+                    (parseFloat(document.getElementById('day_cmnd_practice').value) || 0) +
+                    (parseFloat(document.getElementById('night_cmnd_practice').value) || 0)
+                );
+                totalDisplay.textContent = total.toFixed(1) + ' hours';
+            }
+        }, 100);
+
     } catch (error) {
         console.error('Load flight error:', error);
         loading.classList.add('hidden');
@@ -265,63 +285,45 @@ async function loadFlightData(id) {
 
 function setupForm() {
     const form = document.getElementById('flightForm');
-    const flightTimeInput = document.getElementById('flight_time');
-    const dayHoursInput = document.getElementById('day_hours');
-    const nightHoursInput = document.getElementById('night_hours');
-    const timeWarning = document.getElementById('timeWarning');
 
     // Set max date to today
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('date').max = today;
 
-    // Auto-calculate night hours when day hours changes
-    const updateNightHours = () => {
-        const flightTime = parseFloat(flightTimeInput.value) || 0;
-        const dayHours = parseFloat(dayHoursInput.value) || 0;
+    // Calculate total flight time from all component fields
+    const calculateTotalFlightTime = () => {
+        const dayPic = parseFloat(document.getElementById('day_pic').value) || 0;
+        const nightPic = parseFloat(document.getElementById('night_pic').value) || 0;
+        const dayDual = parseFloat(document.getElementById('day_dual').value) || 0;
+        const nightDual = parseFloat(document.getElementById('night_dual').value) || 0;
+        const daySic = parseFloat(document.getElementById('day_sic').value) || 0;
+        const nightSic = parseFloat(document.getElementById('night_sic').value) || 0;
+        const dayCmndPractice = parseFloat(document.getElementById('day_cmnd_practice').value) || 0;
+        const nightCmndPractice = parseFloat(document.getElementById('night_cmnd_practice').value) || 0;
 
-        if (flightTime > 0) {
-            const calculatedNightHours = Math.max(0, flightTime - dayHours);
-            nightHoursInput.value = calculatedNightHours.toFixed(1);
-        }
+        const total = dayPic + nightPic + dayDual + nightDual + daySic + nightSic + dayCmndPractice + nightCmndPractice;
 
-        validateHours();
+        const totalDisplay = document.getElementById('total_flight_time');
+        totalDisplay.textContent = total.toFixed(1) + ' hours';
+
+        return total;
     };
 
-    // Auto-calculate day hours when night hours changes
-    const updateDayHours = () => {
-        const flightTime = parseFloat(flightTimeInput.value) || 0;
-        const nightHours = parseFloat(nightHoursInput.value) || 0;
+    // Add event listeners to all flight time inputs to recalculate total
+    const flightTimeInputs = [
+        'day_pic', 'night_pic', 'day_dual', 'night_dual',
+        'day_sic', 'night_sic', 'day_cmnd_practice', 'night_cmnd_practice'
+    ];
 
-        if (flightTime > 0) {
-            const calculatedDayHours = Math.max(0, flightTime - nightHours);
-            dayHoursInput.value = calculatedDayHours.toFixed(1);
+    flightTimeInputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('input', calculateTotalFlightTime);
         }
+    });
 
-        validateHours();
-    };
-
-    // Validate day/night hours sum
-    const validateHours = () => {
-        const flightTime = parseFloat(flightTimeInput.value) || 0;
-        const dayHours = parseFloat(dayHoursInput.value) || 0;
-        const nightHours = parseFloat(nightHoursInput.value) || 0;
-        const sum = dayHours + nightHours;
-
-        if (flightTime > 0 && Math.abs(sum - flightTime) > 0.01) {
-            timeWarning.classList.remove('hidden');
-        } else {
-            timeWarning.classList.add('hidden');
-        }
-    };
-
-    // When flight time changes, auto-populate day hours
-    flightTimeInput.addEventListener('input', updateDayHours);
-
-    // When night hours changes, recalculate day hours
-    nightHoursInput.addEventListener('input', updateDayHours);
-
-    // When day hours changes, recalculate night hours
-    dayHoursInput.addEventListener('input', updateNightHours);
+    // Calculate initial total
+    calculateTotalFlightTime();
 
     // Handle form submission
     form.addEventListener('submit', async (e) => {
@@ -355,10 +357,16 @@ async function submitForm() {
             pic: document.getElementById('pic').value || null,
             copilot: document.getElementById('copilot').value || null,
             route: document.getElementById('route').value || null,
-            flight_time: parseFloat(document.getElementById('flight_time').value),
-            day_hours: parseFloat(document.getElementById('day_hours').value) || 0,
-            night_hours: parseFloat(document.getElementById('night_hours').value) || 0,
-            flight_type: document.querySelector('input[name="flight_type"]:checked').value,
+            // New flight time breakdown fields
+            day_pic: parseFloat(document.getElementById('day_pic').value) || 0,
+            night_pic: parseFloat(document.getElementById('night_pic').value) || 0,
+            day_dual: parseFloat(document.getElementById('day_dual').value) || 0,
+            night_dual: parseFloat(document.getElementById('night_dual').value) || 0,
+            day_sic: parseFloat(document.getElementById('day_sic').value) || 0,
+            night_sic: parseFloat(document.getElementById('night_sic').value) || 0,
+            day_cmnd_practice: parseFloat(document.getElementById('day_cmnd_practice').value) || 0,
+            night_cmnd_practice: parseFloat(document.getElementById('night_cmnd_practice').value) || 0,
+            // Special operations hours
             longline_hours: parseFloat(document.getElementById('longline_hours').value) || 0,
             mountain_hours: parseFloat(document.getElementById('mountain_hours').value) || 0,
             instructor_hours: parseFloat(document.getElementById('instructor_hours').value) || 0,
