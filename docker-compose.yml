@@ -1,6 +1,6 @@
 services:
   logbook:
-    build: .
+    image: ghcr.io/penguinator13/pilots-logbook:latest
     container_name: ${CONTAINER_NAME:-pilots-logbook}
     restart: unless-stopped
     ports:

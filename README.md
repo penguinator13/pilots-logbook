@@ -30,7 +30,7 @@ A self-hosted web application for pilots to track and manage their flight hours.
 - **Authentication**: Session-based authentication with bcrypt password hashing
 - **Container**: Docker + Docker Compose
 
-## Quick Start
+## Quick Start (For Users)
 
 ### Prerequisites
 
@@ -39,20 +39,17 @@ A self-hosted web application for pilots to track and manage their flight hours.
 
 ### Installation
 
-1. **Clone or download this repository**:
+1. **Download the docker-compose.yml file**:
    ```bash
-   cd /your/desired/location
-   git clone <repository-url> logbook
-   cd logbook
+   mkdir -p ~/logbook && cd ~/logbook
+   curl -O https://raw.githubusercontent.com/penguinator13/pilots-logbook/main/docker-compose.yml
+   curl -O https://raw.githubusercontent.com/penguinator13/pilots-logbook/main/.env.example
    ```
 
-2. **Create a `.env` file** (required for production):
+2. **Create your `.env` file**:
    ```bash
-   # Copy the example file
    cp .env.example .env
-
-   # Edit with your settings
-   nano .env
+   nano .env  # or use your preferred editor
    ```
 
    **Important**: Change these values:
@@ -66,8 +63,9 @@ A self-hosted web application for pilots to track and manage their flight hours.
    mkdir -p data
    ```
 
-4. **Build and start the application**:
+4. **Start the application**:
    ```bash
+   docker-compose pull
    docker-compose up -d
    ```
 
@@ -75,6 +73,25 @@ A self-hosted web application for pilots to track and manage their flight hours.
    - Open your browser and navigate to `http://localhost:3000` (or your configured `HOST_PORT`)
    - Login with your credentials from the `.env` file
    - Start logging flights!
+
+### Using Pre-built Docker Image
+
+The application is available as a pre-built Docker image at `ghcr.io/penguinator13/pilots-logbook:latest`
+
+You can also run it directly with Docker:
+```bash
+docker pull ghcr.io/penguinator13/pilots-logbook:latest
+
+docker run -d \
+  --name pilots-logbook \
+  -p 3000:3000 \
+  -v $(pwd)/data:/app/data \
+  -e SESSION_SECRET="your-random-secret" \
+  -e ADMIN_USERNAME="your-username" \
+  -e ADMIN_PASSWORD="your-password" \
+  --restart unless-stopped \
+  ghcr.io/penguinator13/pilots-logbook:latest
+```
 
 ## Configuration
 
@@ -232,8 +249,22 @@ docker run -d \
 
 ## Updating the Application
 
+### For Users (Using Pre-built Image)
+
 ```bash
-# Pull the latest changes (if using git)
+# Pull the latest image
+docker-compose pull
+
+# Restart with new version
+docker-compose up -d
+```
+
+Your data in `./data/logbook.db` will be preserved.
+
+### For Developers (Building from Source)
+
+```bash
+# Pull the latest code
 git pull
 
 # Rebuild and restart
@@ -241,8 +272,6 @@ docker-compose down
 docker-compose build
 docker-compose up -d
 ```
-
-Your data in `./data/logbook.db` will be preserved.
 
 ## Troubleshooting
 
@@ -331,10 +360,98 @@ The application uses SQLite with the following tables:
 
 For issues, questions, or contributions, please open an issue in the repository.
 
+## Development
+
+### Building from Source
+
+If you want to contribute or customize the application:
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/penguinator13/pilots-logbook.git
+   cd pilots-logbook
+   ```
+
+2. **Create a `.env` file**:
+   ```bash
+   cp .env.example .env
+   # Edit as needed
+   ```
+
+3. **Build and run locally**:
+   ```bash
+   # Option 1: Using Docker Compose
+   docker-compose -f docker-compose.dev.yml up --build
+
+   # Option 2: Build the image
+   docker build -t pilots-logbook:dev .
+   docker run -p 3000:3000 -v $(pwd)/data:/app/data --env-file .env pilots-logbook:dev
+   ```
+
+### Building Multi-Platform Images
+
+To build for both AMD64 (servers) and ARM64 (Apple Silicon):
+
+```bash
+# Create a multi-platform builder
+docker buildx create --use --name multiplatform
+
+# Build and push for both architectures
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/penguinator13/pilots-logbook:latest \
+  --push .
+```
+
+### Project Structure
+
+```
+pilots-logbook/
+├── src/
+│   ├── server.js          # Express server entry point
+│   ├── models/
+│   │   └── database.js    # SQLite schema & initialization
+│   ├── middleware/
+│   │   └── auth.js        # Authentication middleware
+│   ├── routes/
+│   │   ├── auth.js        # Login/logout endpoints
+│   │   ├── flights.js     # Flight CRUD & stats
+│   │   └── aircraft.js    # Custom aircraft management
+│   └── public/
+│       ├── *.html         # Frontend pages
+│       ├── css/
+│       │   └── styles.css
+│       └── js/
+│           └── *.js       # Frontend JavaScript
+├── data/                  # SQLite database (gitignored)
+├── Dockerfile             # Production container
+├── docker-compose.yml     # Deployment configuration
+├── package.json           # Node.js dependencies
+└── README.md
+```
+
+### Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
+
+## Maintenance Status
+
+⚠️ **Personal Project**: This is a personal project built for my own use. I'm sharing it publicly because other pilots might find it useful, but I make no promises about updates, support, or new features.
+
+- ✅ Works great for my needs (as of January 2026)
+- ✅ Pull requests welcome - I'll review when I can
+- ✅ Community contributions encouraged
+- ⚠️ Issues may not get immediate responses
+- ⚠️ Updates happen when *I* need new features
+- 🤝 **Feel free to fork and maintain your own version!**
+
+If this project becomes popular and you want to maintain an active fork, let me know and I'll link to it here.
+
 ## License
 
-This project is provided as-is for personal use.
+MIT License - See LICENSE file for details.
+
+This project is provided as-is for personal use. Do whatever you want with it!
 
 ---
 
-**Built for helicopter pilots who value simplicity and reliability.**
+**Built by a helicopter pilot, for pilots who value simplicity and reliability.**
