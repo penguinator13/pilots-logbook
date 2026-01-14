@@ -201,61 +201,61 @@
                                 </select>
                             </div>
 
-                            <!-- Total Flight Time -->
-                            <div class="form-group">
-                                <label for="primeTotalHours" class="form-label required">Total Hours in This Aircraft</label>
-                                <input type="number" id="primeTotalHours" name="primeTotalHours" class="form-input" step="any" min="0.1" placeholder="e.g., 150.5" required>
-                                <div class="form-help">Enter your total flight hours in this aircraft type</div>
-                            </div>
-
                             <!-- Flight Time Breakdown -->
                             <div class="form-group">
-                                <label class="form-label">Flight Time Breakdown (Optional)</label>
-                                <div class="form-help mb-2">Break down your hours by day/night and flight role - total hours will be calculated automatically</div>
+                                <label class="form-label required">Flight Time Breakdown</label>
+                                <div class="form-help mb-2">Enter your hours by day/night and flight role - total hours will be calculated automatically</div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="primeDayPic" class="form-label">Day PIC</label>
-                                    <input type="number" id="primeDayPic" name="primeDayPic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <input type="number" id="primeDayPic" name="primeDayPic" class="form-input prime-breakdown-input" step="any" min="0" placeholder="0.0">
                                 </div>
                                 <div class="form-group">
                                     <label for="primeNightPic" class="form-label">Night PIC</label>
-                                    <input type="number" id="primeNightPic" name="primeNightPic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <input type="number" id="primeNightPic" name="primeNightPic" class="form-input prime-breakdown-input" step="any" min="0" placeholder="0.0">
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="primeDayDual" class="form-label">Day Dual</label>
-                                    <input type="number" id="primeDayDual" name="primeDayDual" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <input type="number" id="primeDayDual" name="primeDayDual" class="form-input prime-breakdown-input" step="any" min="0" placeholder="0.0">
                                 </div>
                                 <div class="form-group">
                                     <label for="primeNightDual" class="form-label">Night Dual</label>
-                                    <input type="number" id="primeNightDual" name="primeNightDual" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <input type="number" id="primeNightDual" name="primeNightDual" class="form-input prime-breakdown-input" step="any" min="0" placeholder="0.0">
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="primeDaySic" class="form-label">Day SIC</label>
-                                    <input type="number" id="primeDaySic" name="primeDaySic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <input type="number" id="primeDaySic" name="primeDaySic" class="form-input prime-breakdown-input" step="any" min="0" placeholder="0.0">
                                 </div>
                                 <div class="form-group">
                                     <label for="primeNightSic" class="form-label">Night SIC</label>
-                                    <input type="number" id="primeNightSic" name="primeNightSic" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <input type="number" id="primeNightSic" name="primeNightSic" class="form-input prime-breakdown-input" step="any" min="0" placeholder="0.0">
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="primeDayCmndPractice" class="form-label">Day Comm'd Practice</label>
-                                    <input type="number" id="primeDayCmndPractice" name="primeDayCmndPractice" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <input type="number" id="primeDayCmndPractice" name="primeDayCmndPractice" class="form-input prime-breakdown-input" step="any" min="0" placeholder="0.0">
                                 </div>
                                 <div class="form-group">
                                     <label for="primeNightCmndPractice" class="form-label">Night Comm'd Practice</label>
-                                    <input type="number" id="primeNightCmndPractice" name="primeNightCmndPractice" class="form-input" step="any" min="0" value="0" placeholder="0.0">
+                                    <input type="number" id="primeNightCmndPractice" name="primeNightCmndPractice" class="form-input prime-breakdown-input" step="any" min="0" placeholder="0.0">
                                 </div>
+                            </div>
+
+                            <!-- Calculated Total Flight Time -->
+                            <div class="form-group">
+                                <label class="form-label">Total Flight Time</label>
+                                <div class="calculated-total" id="primeTotalDisplay">0.0 hours</div>
+                                <div class="form-help">Auto-calculated from breakdown fields above</div>
                             </div>
 
                             <!-- Specialty Operations -->
@@ -478,6 +478,16 @@
 
         .modal.hidden {
             display: none;
+        }
+
+        .calculated-total {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border-radius: 0.375rem;
+            border: 2px solid var(--primary-color);
         }
     </style>
 

@@ -22,6 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load aircraft for prime logbook form
     loadPrimeAircraftTypes();
+
+    // Set up prime logbook real-time calculation
+    setupPrimeBreakdownCalculation();
 });
 
 async function checkAuth() {
@@ -622,6 +625,11 @@ async function submitPrimeEntry() {
         const dayHours = dayPic + dayDual + daySic + dayCmndPractice;
         const nightHours = nightPic + nightDual + nightSic + nightCmndPractice;
 
+        // Validate that total hours is > 0
+        if (totalHours <= 0) {
+            throw new Error('Please enter at least one flight time breakdown value');
+        }
+
         const formData = {
             date: document.getElementById('primeDate').value,
             aircraft_category: document.querySelector('input[name="primeAircraftCategory"]:checked').value,
@@ -683,11 +691,14 @@ async function submitPrimeEntry() {
         const data = await response.json();
 
         if (response.ok) {
-            successAlert.textContent = `Prime entry created successfully for ${formData.aircraft_type} with ${totalHours} hours!`;
+            successAlert.textContent = `Prime entry created successfully for ${formData.aircraft_type} with ${totalHours.toFixed(1)} hours!`;
             successAlert.classList.remove('hidden');
 
             // Clear form
             document.getElementById('primeLogbookForm').reset();
+
+            // Reset the total display
+            document.getElementById('primeTotalDisplay').textContent = '0.0 hours';
 
             // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -707,6 +718,33 @@ async function submitPrimeEntry() {
     } finally {
         primeBtn.disabled = false;
         submitText.textContent = 'Create Prime Entry';
+    }
+}
+
+// ==================== PRIME BREAKDOWN CALCULATION ====================
+
+function setupPrimeBreakdownCalculation() {
+    const breakdownInputs = document.querySelectorAll('.prime-breakdown-input');
+    breakdownInputs.forEach(input => {
+        input.addEventListener('input', calculatePrimeTotal);
+    });
+}
+
+function calculatePrimeTotal() {
+    const dayPic = parseFloat(document.getElementById('primeDayPic').value) || 0;
+    const nightPic = parseFloat(document.getElementById('primeNightPic').value) || 0;
+    const dayDual = parseFloat(document.getElementById('primeDayDual').value) || 0;
+    const nightDual = parseFloat(document.getElementById('primeNightDual').value) || 0;
+    const daySic = parseFloat(document.getElementById('primeDaySic').value) || 0;
+    const nightSic = parseFloat(document.getElementById('primeNightSic').value) || 0;
+    const dayCmndPractice = parseFloat(document.getElementById('primeDayCmndPractice').value) || 0;
+    const nightCmndPractice = parseFloat(document.getElementById('primeNightCmndPractice').value) || 0;
+
+    const total = dayPic + nightPic + dayDual + nightDual + daySic + nightSic + dayCmndPractice + nightCmndPractice;
+
+    const display = document.getElementById('primeTotalDisplay');
+    if (display) {
+        display.textContent = `${total.toFixed(1)} hours`;
     }
 }
 
