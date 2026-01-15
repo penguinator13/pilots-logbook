@@ -13,6 +13,16 @@ A self-hosted web application for pilots to track and manage their flight hours.
 - **Dark Mode**: Automatic dark mode support based on system preferences
 - **Single User Authentication**: Simple session-based login for personal use
 
+## Screenshots
+
+| Dashboard | Add Flight |
+|:---------:|:----------:|
+| ![Dashboard](screenshots/dashboard.png) | ![Add Flight](screenshots/add-flight-1.png) |
+
+| Flight Log | Settings |
+|:----------:|:--------:|
+| ![View Flights](screenshots/view-flights.png) | ![Settings](screenshots/settings.png) |
+
 ## Technology Stack
 
 - **Backend**: Node.js + Express
