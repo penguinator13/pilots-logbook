@@ -108,9 +108,10 @@ router.get('/stats/summary', (req, res) => {
     ).get(req.session.userId);
     console.log('Dual/PIC hours query OK:', dualPicHours);
 
-    // Hours by aircraft type
+    // Hours by aircraft type (flight count excludes prime entries)
     const hoursByAircraft = db.prepare(`
-      SELECT aircraft_type, SUM(flight_time_hours) as hours, COUNT(*) as flights
+      SELECT aircraft_type, SUM(flight_time_hours) as hours,
+        SUM(CASE WHEN flight_details IS NULL OR flight_details NOT LIKE '%LOGBOOK PRIME ENTRY%' THEN 1 ELSE 0 END) as flights
       FROM flights
       WHERE user_id = ?
       GROUP BY aircraft_type
@@ -118,9 +119,9 @@ router.get('/stats/summary', (req, res) => {
     `).all(req.session.userId);
     console.log('Aircraft breakdown query OK');
 
-    // Total flights count
+    // Total flights count (excludes prime entries)
     const totalFlights = db.prepare(
-      'SELECT COUNT(*) as count FROM flights WHERE user_id = ?'
+      "SELECT COUNT(*) as count FROM flights WHERE user_id = ? AND (flight_details IS NULL OR flight_details NOT LIKE '%LOGBOOK PRIME ENTRY%')"
     ).get(req.session.userId);
     console.log('Total flights query OK');
 
