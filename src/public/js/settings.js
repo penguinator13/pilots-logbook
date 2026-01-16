@@ -1,7 +1,8 @@
-// Settings page functionality (Aircraft + Custom Fields)
+// Settings page functionality (Aircraft + Custom Fields + Tags)
 
 let aircraftToDelete = null;
 let customFieldToDelete = null;
+let tagToDelete = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Check authentication
@@ -19,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load data
     loadAircraft();
     loadCustomFields();
+    loadTags();
 
     // Load aircraft for prime logbook form
     loadPrimeAircraftTypes();
@@ -117,6 +119,13 @@ function setupForms() {
         fieldName.value = generatedName;
     });
 
+    // Tags form
+    const tagForm = document.getElementById('addTagForm');
+    tagForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await addTag();
+    });
+
     // Prime logbook form
     const primeForm = document.getElementById('primeLogbookForm');
     primeForm.addEventListener('submit', async (e) => {
@@ -175,15 +184,19 @@ async function loadAircraft() {
 function displayAircraft(aircraft) {
     const aircraftList = document.getElementById('aircraftList');
 
-    const html = aircraft.map(item => `
+    const html = aircraft.map(item => {
+        // Escape name for use in onclick attribute (escape quotes and backslashes)
+        const safeName = item.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        return `
         <div class="aircraft-item">
             <div>
                 <div class="aircraft-name">${escapeHtml(item.name)}</div>
                 <div class="aircraft-meta">Added ${formatDate(item.created_at)}</div>
             </div>
-            <button class="btn btn-small btn-danger" onclick="confirmDeleteAircraft(${item.id}, '${escapeHtml(item.name)}')">Delete</button>
+            <button class="btn btn-small btn-danger" onclick="confirmDeleteAircraft(${item.id}, '${safeName}')">Delete</button>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     aircraftList.innerHTML = html;
 }
@@ -251,8 +264,11 @@ async function addAircraft() {
 }
 
 function confirmDeleteAircraft(id, name) {
+    console.log('confirmDeleteAircraft called with id:', id, 'name:', name);
     aircraftToDelete = id;
     const modal = document.getElementById('deleteAircraftModal');
+    console.log('Modal element:', modal);
+    modal.classList.remove('hidden');
     modal.style.display = 'flex';
 
     const confirmBtn = document.getElementById('confirmDeleteAircraftBtn');
@@ -520,23 +536,211 @@ async function deleteCustomField() {
     }
 }
 
+// ==================== TAGS MANAGEMENT ====================
+
+async function loadTags() {
+    const loading = document.getElementById('tagsLoading');
+    const errorAlert = document.getElementById('errorAlert');
+    const tagsContainer = document.getElementById('tagsContainer');
+    const tagsList = document.getElementById('tagsList');
+    const noTags = document.getElementById('noTags');
+
+    // Show loading
+    loading.classList.remove('hidden');
+    tagsContainer.classList.add('hidden');
+
+    try {
+        const response = await fetch('/api/tags');
+        if (!response.ok) {
+            throw new Error('Failed to load tags');
+        }
+
+        const tags = await response.json();
+
+        // Hide loading, show content
+        loading.classList.add('hidden');
+        tagsContainer.classList.remove('hidden');
+
+        if (tags.length === 0) {
+            tagsList.innerHTML = '';
+            noTags.classList.remove('hidden');
+        } else {
+            noTags.classList.add('hidden');
+            displayTags(tags);
+        }
+
+    } catch (error) {
+        console.error('Load tags error:', error);
+        loading.classList.add('hidden');
+        errorAlert.textContent = 'Failed to load tags. Please try again.';
+        errorAlert.classList.remove('hidden');
+    }
+}
+
+function displayTags(tags) {
+    const tagsList = document.getElementById('tagsList');
+
+    const html = tags.map(tag => {
+        const safeName = tag.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        return `
+        <div class="tag-item">
+            <span class="tag-name">#${escapeHtml(tag.name)}</span>
+            <button class="tag-delete" onclick="confirmDeleteTag(${tag.id}, '${safeName}')" title="Delete tag">&times;</button>
+        </div>
+    `;
+    }).join('');
+
+    tagsList.innerHTML = html;
+}
+
+async function addTag() {
+    const addBtn = document.getElementById('addTagBtn');
+    const successAlert = document.getElementById('successAlert');
+    const errorAlert = document.getElementById('errorAlert');
+    const tagNameInput = document.getElementById('tagName');
+
+    // Clear previous messages
+    successAlert.classList.add('hidden');
+    errorAlert.classList.add('hidden');
+
+    const name = tagNameInput.value.trim();
+
+    if (!name) {
+        errorAlert.textContent = 'Please enter a tag name';
+        errorAlert.classList.remove('hidden');
+        return;
+    }
+
+    // Disable button
+    addBtn.disabled = true;
+    addBtn.textContent = 'Adding...';
+
+    try {
+        const response = await fetch('/api/tags', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Success
+            successAlert.textContent = `Tag "#${name}" added successfully!`;
+            successAlert.classList.remove('hidden');
+
+            // Clear form
+            tagNameInput.value = '';
+
+            // Reload tags list
+            await loadTags();
+
+            // Hide success message after 3 seconds
+            setTimeout(() => {
+                successAlert.classList.add('hidden');
+            }, 3000);
+        } else {
+            throw new Error(data.error || 'Failed to add tag');
+        }
+
+    } catch (error) {
+        console.error('Add tag error:', error);
+        errorAlert.textContent = error.message || 'Failed to add tag. Please try again.';
+        errorAlert.classList.remove('hidden');
+    } finally {
+        addBtn.disabled = false;
+        addBtn.textContent = 'Add Tag';
+    }
+}
+
+function confirmDeleteTag(id, name) {
+    tagToDelete = id;
+    const modal = document.getElementById('deleteTagModal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    const confirmBtn = document.getElementById('confirmDeleteTagBtn');
+    const cancelBtn = document.getElementById('cancelDeleteTagBtn');
+
+    confirmBtn.onclick = async () => {
+        await deleteTag();
+    };
+
+    cancelBtn.onclick = () => {
+        closeDeleteTagModal();
+    };
+}
+
+function closeDeleteTagModal() {
+    const modal = document.getElementById('deleteTagModal');
+    modal.style.display = 'none';
+    tagToDelete = null;
+}
+
+async function deleteTag() {
+    const confirmBtn = document.getElementById('confirmDeleteTagBtn');
+    const errorAlert = document.getElementById('errorAlert');
+    const successAlert = document.getElementById('successAlert');
+
+    try {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Deleting...';
+
+        const response = await fetch(`/api/tags/${tagToDelete}`, {
+            method: 'DELETE',
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to delete tag');
+        }
+
+        // Close modal
+        closeDeleteTagModal();
+
+        // Show success message
+        successAlert.textContent = 'Tag deleted successfully';
+        successAlert.classList.remove('hidden');
+        setTimeout(() => {
+            successAlert.classList.add('hidden');
+        }, 3000);
+
+        // Reload tags list
+        await loadTags();
+
+    } catch (error) {
+        console.error('Delete error:', error);
+        closeDeleteTagModal();
+        errorAlert.textContent = error.message || 'Failed to delete tag. Please try again.';
+        errorAlert.classList.remove('hidden');
+        setTimeout(() => {
+            errorAlert.classList.add('hidden');
+        }, 5000);
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Delete';
+    }
+}
+
 // ==================== PRIME LOGBOOK ====================
 
 async function loadPrimeAircraftTypes() {
     const select = document.getElementById('primeAircraftType');
-    const defaults = ['R22', 'R44', 'AS350B2', 'AS350B3', 'H125', 'B206', 'Bell 212'];
 
     try {
         const response = await fetch('/api/aircraft');
-        const customAircraft = response.ok ? await response.json() : [];
-        const allAircraft = [...defaults, ...customAircraft.map(a => a.name)];
-        allAircraft.sort();
+        const aircraft = response.ok ? await response.json() : [];
+        const aircraftNames = aircraft.map(a => a.name);
+        aircraftNames.sort();
 
         select.innerHTML = '<option value="">Select aircraft type</option>';
-        allAircraft.forEach(aircraft => {
+        aircraftNames.forEach(name => {
             const option = document.createElement('option');
-            option.value = aircraft;
-            option.textContent = aircraft;
+            option.value = name;
+            option.textContent = name;
             select.appendChild(option);
         });
 
@@ -650,14 +854,6 @@ async function submitPrimeEntry() {
             night_sic: nightSic,
             day_cmnd_practice: dayCmndPractice,
             night_cmnd_practice: nightCmndPractice,
-            longline_hours: parseFloat(document.getElementById('primeLonglineHours').value) || 0,
-            mountain_hours: parseFloat(document.getElementById('primeMountainHours').value) || 0,
-            instructor_hours: parseFloat(document.getElementById('primeInstructorHours').value) || 0,
-            crosscountry_hours: parseFloat(document.getElementById('primeCrosscountryHours').value) || 0,
-            night_vision_hours: parseFloat(document.getElementById('primeNightVisionHours').value) || 0,
-            instrument_hours: parseFloat(document.getElementById('primeInstrumentHours').value) || 0,
-            simulated_instrument_hours: parseFloat(document.getElementById('primeSimulatedInstrumentHours').value) || 0,
-            ground_instrument_hours: parseFloat(document.getElementById('primeGroundInstrumentHours').value) || 0,
             takeoffs_day: parseInt(document.getElementById('primeTakeoffsDay').value) || 0,
             takeoffs_night: parseInt(document.getElementById('primeTakeoffsNight').value) || 0,
             landings_day: parseInt(document.getElementById('primeLandingsDay').value) || 0,
@@ -751,9 +947,10 @@ function calculatePrimeTotal() {
 // ==================== UTILITY FUNCTIONS ====================
 
 function formatDate(dateString) {
-    // Parse as local date to avoid timezone shift (dateString is YYYY-MM-DD)
-    const [year, month, day] = dateString.split('-');
-    const date = new Date(year, month - 1, day);
+    if (!dateString) return 'Unknown';
+    // Handle both YYYY-MM-DD and full datetime formats
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Unknown';
     return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -767,3 +964,8 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// Make delete functions available globally for onclick handlers
+window.confirmDeleteAircraft = confirmDeleteAircraft;
+window.confirmDeleteCustomField = confirmDeleteCustomField;
+window.confirmDeleteTag = confirmDeleteTag;

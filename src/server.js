@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const flightRoutes = require('./routes/flights');
 const aircraftRoutes = require('./routes/aircraft');
 const customFieldsRoutes = require('./routes/custom-fields');
+const tagsRoutes = require('./routes/tags');
 const { requireAuth } = require('./middleware/auth');
 
 const app = express();
@@ -35,6 +36,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/flights', flightRoutes);
 app.use('/api/aircraft', aircraftRoutes);
 app.use('/api/custom-fields', customFieldsRoutes);
+app.use('/api/tags', tagsRoutes);
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));

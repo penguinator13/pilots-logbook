@@ -273,6 +273,21 @@ body {
     gap: 1rem;
 }
 
+.input-with-button {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.input-with-button .form-input {
+    flex: 1;
+}
+
+.input-with-button .self-btn {
+    flex-shrink: 0;
+    padding: 0.5rem 0.75rem;
+}
+
 .form-help {
     font-size: 0.75rem;
     color: var(--text-muted);
@@ -695,6 +710,43 @@ body {
     .table-actions .btn {
         width: 100%;
     }
+}
+
+/* ===================================
+   QUICK TAGS
+   =================================== */
+
+.quick-tags {
+    margin-top: 0.5rem;
+}
+
+.tag-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.tag-button {
+    display: inline-block;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.tag-button:hover {
+    background: var(--primary-hover);
+    transform: scale(1.05);
+}
+
+.tag-button:active {
+    transform: scale(0.95);
 }
 
 /* ===================================

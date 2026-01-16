@@ -173,14 +173,6 @@ router.post('/', (req, res) => {
     night_sic,
     day_cmnd_practice,
     night_cmnd_practice,
-    longline_hours,
-    mountain_hours,
-    instructor_hours,
-    crosscountry_hours,
-    night_vision_hours,
-    instrument_hours,
-    simulated_instrument_hours,
-    ground_instrument_hours,
     aircraft_category,
     engine_type,
     takeoffs_day,
@@ -232,15 +224,6 @@ router.post('/', (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const longline_hrs = parseFloat(longline_hours) || 0;
-    const mountain_hrs = parseFloat(mountain_hours) || 0;
-    const instructor_hrs = parseFloat(instructor_hours) || 0;
-    const crosscountry_hrs = parseFloat(crosscountry_hours) || 0;
-    const night_vision_hrs = parseFloat(night_vision_hours) || 0;
-    const instrument_hrs = parseFloat(instrument_hours) || 0;
-    const simulated_instrument_hrs = parseFloat(simulated_instrument_hours) || 0;
-    const ground_instrument_hrs = parseFloat(ground_instrument_hours) || 0;
-
     const result = stmt.run(
       req.session.userId,
       date,
@@ -258,14 +241,14 @@ router.post('/', (req, res) => {
       parseFloat(night_sic) || 0,
       parseFloat(day_cmnd_practice) || 0,
       parseFloat(night_cmnd_practice) || 0,
-      longline_hrs,  // Special operations hours
-      mountain_hrs,
-      instructor_hrs,
-      crosscountry_hrs,
-      night_vision_hrs,
-      instrument_hrs,
-      simulated_instrument_hrs,
-      ground_instrument_hrs,
+      0,  // longline_hours - legacy column, no longer used
+      0,  // mountain_hours - legacy column, no longer used
+      0,  // instructor_hours - legacy column, no longer used
+      0,  // crosscountry_hours - legacy column, no longer used
+      0,  // night_vision_hours - legacy column, no longer used
+      0,  // instrument_hours - legacy column, no longer used
+      0,  // simulated_instrument_hours - legacy column, no longer used
+      0,  // ground_instrument_hours - legacy column, no longer used
       aircraft_category || 'Helicopter',
       engine_type || 'Single Engine',
       parseInt(takeoffs_day) || 0,
@@ -317,14 +300,6 @@ router.put('/:id', (req, res) => {
     night_sic,
     day_cmnd_practice,
     night_cmnd_practice,
-    longline_hours,
-    mountain_hours,
-    instructor_hours,
-    crosscountry_hours,
-    night_vision_hours,
-    instrument_hours,
-    simulated_instrument_hours,
-    ground_instrument_hours,
     aircraft_category,
     engine_type,
     takeoffs_day,
@@ -377,15 +352,6 @@ router.put('/:id', (req, res) => {
       WHERE id = ? AND user_id = ?
     `);
 
-    const longline_hrs = parseFloat(longline_hours) || 0;
-    const mountain_hrs = parseFloat(mountain_hours) || 0;
-    const instructor_hrs = parseFloat(instructor_hours) || 0;
-    const crosscountry_hrs = parseFloat(crosscountry_hours) || 0;
-    const night_vision_hrs = parseFloat(night_vision_hours) || 0;
-    const instrument_hrs = parseFloat(instrument_hours) || 0;
-    const simulated_instrument_hrs = parseFloat(simulated_instrument_hours) || 0;
-    const ground_instrument_hrs = parseFloat(ground_instrument_hours) || 0;
-
     const result = stmt.run(
       date,
       aircraft_type,
@@ -402,14 +368,14 @@ router.put('/:id', (req, res) => {
       parseFloat(night_sic) || 0,
       parseFloat(day_cmnd_practice) || 0,
       parseFloat(night_cmnd_practice) || 0,
-      longline_hrs,  // Special operations hours
-      mountain_hrs,
-      instructor_hrs,
-      crosscountry_hrs,
-      night_vision_hrs,
-      instrument_hrs,
-      simulated_instrument_hrs,
-      ground_instrument_hrs,
+      0,  // longline_hours - legacy column, no longer used
+      0,  // mountain_hours - legacy column, no longer used
+      0,  // instructor_hours - legacy column, no longer used
+      0,  // crosscountry_hours - legacy column, no longer used
+      0,  // night_vision_hours - legacy column, no longer used
+      0,  // instrument_hours - legacy column, no longer used
+      0,  // simulated_instrument_hours - legacy column, no longer used
+      0,  // ground_instrument_hours - legacy column, no longer used
       aircraft_category || 'Helicopter',
       engine_type || 'Single Engine',
       parseInt(takeoffs_day) || 0,

@@ -48,17 +48,6 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'A custom field with this name already exists' });
     }
 
-    // Reserved field names (built-in fields)
-    const reservedFields = [
-      'longline_hours', 'mountain_hours', 'instructor_hours', 'crosscountry_hours',
-      'night_vision_hours', 'instrument_hours', 'simulated_instrument_hours', 'ground_instrument_hours',
-      'day_hours', 'night_hours', 'flight_time_hours'
-    ];
-
-    if (reservedFields.includes(field_name)) {
-      return res.status(400).json({ error: 'This field name is reserved for built-in fields' });
-    }
-
     // Insert new custom field
     const result = db.prepare(`
       INSERT INTO custom_fields (user_id, field_name, field_label)

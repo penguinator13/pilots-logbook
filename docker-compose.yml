@@ -12,6 +12,7 @@ services:
       # Application settings
       NODE_ENV: production
       PORT: ${PORT:-3000}
+      TZ: ${TZ:-America/Vancouver}
 
       # Database
       DB_PATH: ${DB_PATH:-/app/data/logbook.db}

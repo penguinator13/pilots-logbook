@@ -74,37 +74,25 @@ async function logout() {
 async function loadAircraftTypes() {
     const select = document.getElementById('aircraftFilter');
 
-    // Default aircraft types
-    const defaults = ['R22', 'R44', 'AS350B2', 'AS350B3', 'H125', 'B206', 'Bell 212'];
-
     try {
-        // Fetch custom aircraft from API
+        // Fetch aircraft from API
         const response = await fetch('/api/aircraft');
-        const customAircraft = response.ok ? await response.json() : [];
-
-        // Combine defaults with custom aircraft
-        const allAircraft = [...defaults, ...customAircraft.map(a => a.name)];
+        const aircraft = response.ok ? await response.json() : [];
+        const aircraftNames = aircraft.map(a => a.name);
 
         // Sort alphabetically
-        allAircraft.sort();
+        aircraftNames.sort();
 
-        // Preserve "All Aircraft" option and add all aircraft
-        const currentHTML = select.innerHTML;
-        allAircraft.forEach(aircraft => {
+        // Add aircraft options (preserving "All Aircraft" option)
+        aircraftNames.forEach(name => {
             const option = document.createElement('option');
-            option.value = aircraft;
-            option.textContent = aircraft;
+            option.value = name;
+            option.textContent = name;
             select.appendChild(option);
         });
     } catch (error) {
         console.error('Error loading aircraft types:', error);
-        // Fall back to defaults only
-        defaults.forEach(aircraft => {
-            const option = document.createElement('option');
-            option.value = aircraft;
-            option.textContent = aircraft;
-            select.appendChild(option);
-        });
+        // Show empty filter (just "All Aircraft" option remains)
     }
 }
 
@@ -266,8 +254,8 @@ function displayFlights(flights) {
             <td class="registration-cell">${escapeHtml(flight.registration || '-')}</td>
             <td>${escapeHtml(truncate(flight.route || '-', 40))}</td>
             <td>${flight.flight_time.toFixed(1)} hrs</td>
-            <td>${escapeHtml(flight.flight_type)}</td>
             <td class="table-actions">
+                <button class="btn btn-small btn-secondary" onclick="duplicateFlight(${flight.id})" title="Duplicate">Dup</button>
                 <button class="btn btn-small btn-secondary" onclick="editFlight(${flight.id})">Edit</button>
                 <button class="btn btn-small btn-danger" onclick="confirmDelete(${flight.id})">Delete</button>
             </td>
@@ -289,6 +277,10 @@ function updatePaginationUI() {
 
 function editFlight(id) {
     window.location.href = `/edit-flight.html?id=${id}`;
+}
+
+function duplicateFlight(id) {
+    window.location.href = `/add-flight.html?duplicate=${id}`;
 }
 
 function confirmDelete(id) {

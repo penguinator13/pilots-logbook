@@ -190,6 +190,18 @@ function initializeDatabase() {
     )
   `);
 
+  // Create tags table for quick-insert tags on flight details
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tags (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, name),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
   // Create index on date for faster sorting
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_flights_date ON flights(date DESC)

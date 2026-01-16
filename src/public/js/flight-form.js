@@ -1,6 +1,13 @@
 // Flight form functionality (for both add and edit)
 
+// Get today's date in YYYY-MM-DD format using local timezone
+function getLocalDateString() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 let isEditMode = false;
+let isDuplicateMode = false;
 let flightId = null;
 let customFields = [];
 
@@ -17,16 +24,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load custom fields
     loadCustomFields();
 
-    // Determine if we're in edit mode
+    // Load tags for quick insert
+    loadTags();
+
+    // Determine if we're in edit or duplicate mode
     const urlParams = new URLSearchParams(window.location.search);
     flightId = urlParams.get('id');
+    const duplicateId = urlParams.get('duplicate');
     isEditMode = !!flightId;
+    isDuplicateMode = !!duplicateId;
 
     if (isEditMode) {
         loadFlightData(flightId);
+    } else if (isDuplicateMode) {
+        loadFlightData(duplicateId, true); // true = duplicate mode
     } else {
         // Set default date to today
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateString();
         document.getElementById('date').value = today;
         document.getElementById('date').max = today;
     }
@@ -81,40 +95,29 @@ async function logout() {
 async function loadAircraftTypes() {
     const select = document.getElementById('aircraft_type');
 
-    // Default aircraft types
-    const defaults = ['R22', 'R44', 'AS350B2', 'AS350B3', 'H125', 'B206', 'Bell 212'];
-
     try {
-        // Fetch custom aircraft from API
+        // Fetch aircraft from API
         const response = await fetch('/api/aircraft');
-        const customAircraft = response.ok ? await response.json() : [];
-
-        // Combine defaults with custom aircraft
-        const allAircraft = [...defaults, ...customAircraft.map(a => a.name)];
+        const aircraft = response.ok ? await response.json() : [];
+        const aircraftNames = aircraft.map(a => a.name);
 
         // Sort alphabetically
-        allAircraft.sort();
+        aircraftNames.sort();
 
         // Clear existing options except the placeholder
         select.innerHTML = '<option value="">Select aircraft type</option>';
 
         // Add all aircraft
-        allAircraft.forEach(aircraft => {
+        aircraftNames.forEach(name => {
             const option = document.createElement('option');
-            option.value = aircraft;
-            option.textContent = aircraft;
+            option.value = name;
+            option.textContent = name;
             select.appendChild(option);
         });
     } catch (error) {
         console.error('Error loading aircraft types:', error);
-        // Fall back to defaults only
+        // Show empty dropdown with placeholder
         select.innerHTML = '<option value="">Select aircraft type</option>';
-        defaults.forEach(aircraft => {
-            const option = document.createElement('option');
-            option.value = aircraft;
-            option.textContent = aircraft;
-            select.appendChild(option);
-        });
     }
 }
 
@@ -176,7 +179,77 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-async function loadFlightData(id) {
+async function loadTags() {
+    try {
+        const response = await fetch('/api/tags');
+        if (response.ok) {
+            const tags = await response.json();
+            renderTags(tags);
+        }
+    } catch (error) {
+        console.error('Error loading tags:', error);
+        // Fail silently - tags are optional
+    }
+}
+
+function renderTags(tags) {
+    const container = document.getElementById('tagsContainer');
+    const buttonsContainer = document.getElementById('tagButtons');
+
+    if (!tags || tags.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    // Show the tags container
+    container.classList.remove('hidden');
+
+    // Render tag buttons (display without hashtag)
+    const html = tags.map(tag => `
+        <button type="button" class="tag-button" onclick="insertTag('${escapeHtml(tag.name)}')">${escapeHtml(tag.name)}</button>
+    `).join('');
+
+    buttonsContainer.innerHTML = html;
+}
+
+function insertTag(tagName) {
+    const routeField = document.getElementById('route');
+    const currentValue = routeField.value;
+
+    // Check if tag already exists in the field (as plain text)
+    // Use word boundary check to avoid partial matches
+    const tagRegex = new RegExp(`\\b${tagName}\\b`, 'i');
+    if (tagRegex.test(currentValue)) {
+        return; // Don't add duplicate tags
+    }
+
+    // Add tag to the end (with space if there's existing content)
+    if (currentValue.trim()) {
+        routeField.value = currentValue.trim() + ' ' + tagName;
+    } else {
+        routeField.value = tagName;
+    }
+
+    // Focus back on the field
+    routeField.focus();
+}
+
+// Set "Self" for PIC or Co-pilot fields
+function setSelf(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (field) {
+        field.value = 'Self';
+        field.focus();
+    }
+}
+
+// Make setSelf available globally for onclick handlers
+window.setSelf = setSelf;
+
+// Make insertTag available globally for onclick handlers
+window.insertTag = insertTag;
+
+async function loadFlightData(id, isDuplicate = false) {
     const loading = document.getElementById('loading');
     const errorAlert = document.getElementById('errorAlert');
     const form = document.getElementById('flightForm');
@@ -190,8 +263,15 @@ async function loadFlightData(id) {
         const flight = await response.json();
 
         // Populate form fields
-        document.getElementById('flightId').value = flight.id;
-        document.getElementById('date').value = flight.date;
+        if (!isDuplicate) {
+            // Only set flightId for edit mode, not duplicate
+            document.getElementById('flightId').value = flight.id;
+            document.getElementById('date').value = flight.date;
+        } else {
+            // For duplicate mode, set today's date
+            const today = getLocalDateString();
+            document.getElementById('date').value = today;
+        }
         document.getElementById('aircraft_type').value = flight.aircraft_type;
         document.getElementById('registration').value = flight.registration || '';
         document.getElementById('pic').value = flight.pic || '';
@@ -222,16 +302,6 @@ async function loadFlightData(id) {
             engineRadio.checked = true;
         }
 
-        // Set special operations hours
-        document.getElementById('longline_hours').value = flight.longline_hours || 0;
-        document.getElementById('mountain_hours').value = flight.mountain_hours || 0;
-        document.getElementById('instructor_hours').value = flight.instructor_hours || 0;
-        document.getElementById('crosscountry_hours').value = flight.crosscountry_hours || 0;
-        document.getElementById('night_vision_hours').value = flight.night_vision_hours || 0;
-        document.getElementById('instrument_hours').value = flight.instrument_hours || 0;
-        document.getElementById('simulated_instrument_hours').value = flight.simulated_instrument_hours || 0;
-        document.getElementById('ground_instrument_hours').value = flight.ground_instrument_hours || 0;
-
         // Set takeoffs and landings
         document.getElementById('takeoffs_day').value = flight.takeoffs_day || 0;
         document.getElementById('takeoffs_night').value = flight.takeoffs_night || 0;
@@ -239,7 +309,7 @@ async function loadFlightData(id) {
         document.getElementById('landings_night').value = flight.landings_night || 0;
 
         // Set max date to today
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateString();
         document.getElementById('date').max = today;
 
         // Load custom field values if they exist
@@ -287,7 +357,7 @@ function setupForm() {
     const form = document.getElementById('flightForm');
 
     // Set max date to today
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     document.getElementById('date').max = today;
 
     // Calculate total flight time from all component fields
@@ -366,15 +436,6 @@ async function submitForm() {
             night_sic: parseFloat(document.getElementById('night_sic').value) || 0,
             day_cmnd_practice: parseFloat(document.getElementById('day_cmnd_practice').value) || 0,
             night_cmnd_practice: parseFloat(document.getElementById('night_cmnd_practice').value) || 0,
-            // Special operations hours
-            longline_hours: parseFloat(document.getElementById('longline_hours').value) || 0,
-            mountain_hours: parseFloat(document.getElementById('mountain_hours').value) || 0,
-            instructor_hours: parseFloat(document.getElementById('instructor_hours').value) || 0,
-            crosscountry_hours: parseFloat(document.getElementById('crosscountry_hours').value) || 0,
-            night_vision_hours: parseFloat(document.getElementById('night_vision_hours').value) || 0,
-            instrument_hours: parseFloat(document.getElementById('instrument_hours').value) || 0,
-            simulated_instrument_hours: parseFloat(document.getElementById('simulated_instrument_hours').value) || 0,
-            ground_instrument_hours: parseFloat(document.getElementById('ground_instrument_hours').value) || 0,
             takeoffs_day: parseInt(document.getElementById('takeoffs_day').value) || 0,
             takeoffs_night: parseInt(document.getElementById('takeoffs_night').value) || 0,
             landings_day: parseInt(document.getElementById('landings_day').value) || 0,
@@ -404,7 +465,7 @@ async function submitForm() {
             throw new Error('Flight date cannot be in the future');
         }
 
-        // Make API request
+        // Make API request (duplicate mode uses POST like add mode)
         const url = isEditMode ? `/api/flights/${flightId}` : '/api/flights';
         const method = isEditMode ? 'PUT' : 'POST';
 
@@ -420,9 +481,13 @@ async function submitForm() {
 
         if (response.ok) {
             // Success
-            successAlert.textContent = isEditMode
-                ? 'Flight updated successfully!'
-                : 'Flight added successfully!';
+            let successMessage = 'Flight added successfully!';
+            if (isEditMode) {
+                successMessage = 'Flight updated successfully!';
+            } else if (isDuplicateMode) {
+                successMessage = 'Flight duplicated successfully!';
+            }
+            successAlert.textContent = successMessage;
             successAlert.classList.remove('hidden');
 
             // Scroll to top
