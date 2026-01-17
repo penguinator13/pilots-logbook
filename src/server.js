@@ -9,6 +9,7 @@ const flightRoutes = require('./routes/flights');
 const aircraftRoutes = require('./routes/aircraft');
 const customFieldsRoutes = require('./routes/custom-fields');
 const tagsRoutes = require('./routes/tags');
+const pdfExportRoutes = require('./routes/pdf-export');
 const { requireAuth } = require('./middleware/auth');
 
 const app = express();
@@ -33,6 +34,7 @@ app.use(session({
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/flights/export', pdfExportRoutes);  // Must come before /api/flights
 app.use('/api/flights', flightRoutes);
 app.use('/api/aircraft', aircraftRoutes);
 app.use('/api/custom-fields', customFieldsRoutes);

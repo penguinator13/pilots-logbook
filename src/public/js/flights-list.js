@@ -191,6 +191,129 @@ function setupExport() {
             exportSummaryBtn.textContent = 'Export Summary';
         }
     });
+
+    // PDF export button
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', async () => {
+            await showPdfExportModal();
+        });
+    }
+}
+
+// PDF Export Modal functionality
+async function showPdfExportModal() {
+    const modal = document.getElementById('pdfModal');
+    const customFieldsList = document.getElementById('pdfCustomFieldsList');
+    const noFieldsMsg = document.getElementById('noCustomFieldsMsg');
+    const confirmBtn = document.getElementById('confirmPdfExportBtn');
+    const cancelBtn = document.getElementById('cancelPdfExportBtn');
+
+    try {
+        // Fetch user's custom fields
+        const response = await fetch('/api/custom-fields');
+        const customFields = response.ok ? await response.json() : [];
+
+        // Build checkbox list
+        if (customFields.length > 0) {
+            noFieldsMsg.style.display = 'none';
+            customFieldsList.innerHTML = customFields.map(cf => `
+                <label class="checkbox-label" style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="pdfCustomField" value="${cf.id}" style="margin-right: 0.5rem;">
+                    ${escapeHtml(cf.field_label)}
+                </label>
+            `).join('');
+
+            // Add event listener to limit to 3 selections
+            const checkboxes = customFieldsList.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const checked = customFieldsList.querySelectorAll('input[type="checkbox"]:checked');
+                    if (checked.length > 3) {
+                        cb.checked = false;
+                        alert('You can select up to 3 custom fields.');
+                    }
+                });
+            });
+        } else {
+            noFieldsMsg.style.display = 'block';
+            customFieldsList.querySelectorAll('label').forEach(el => el.remove());
+        }
+
+        // Show modal
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+
+        // Handle confirm button
+        confirmBtn.onclick = async () => {
+            const selectedFields = [];
+            customFieldsList.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+                selectedFields.push(cb.value);
+            });
+
+            // Close modal
+            closePdfModal();
+
+            // Export PDF
+            await exportToPdf(selectedFields);
+        };
+
+        // Handle cancel button
+        cancelBtn.onclick = () => {
+            closePdfModal();
+        };
+
+    } catch (error) {
+        console.error('Error loading custom fields:', error);
+        // If error, just proceed to export without custom fields
+        closePdfModal();
+        await exportToPdf([]);
+    }
+}
+
+function closePdfModal() {
+    const modal = document.getElementById('pdfModal');
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+}
+
+async function exportToPdf(fieldIds) {
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+
+    try {
+        exportPdfBtn.disabled = true;
+        exportPdfBtn.textContent = 'Generating PDF...';
+
+        // Build URL with custom field IDs
+        let url = '/api/flights/export/pdf';
+        if (fieldIds.length > 0) {
+            url += `?fields=${fieldIds.join(',')}`;
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Export failed');
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `logbook_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+
+        exportPdfBtn.disabled = false;
+        exportPdfBtn.textContent = 'Export to PDF';
+    } catch (error) {
+        console.error('PDF export error:', error);
+        alert('Failed to export PDF: ' + error.message);
+        exportPdfBtn.disabled = false;
+        exportPdfBtn.textContent = 'Export to PDF';
+    }
 }
 
 async function loadFlights() {

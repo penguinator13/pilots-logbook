@@ -54,6 +54,7 @@
                 <div class="form-group" style="display: flex; align-items: flex-end; gap: 0.5rem;">
                     <button id="exportBtn" class="btn btn-secondary">Export to CSV</button>
                     <button id="exportSummaryBtn" class="btn btn-secondary">Export Summary</button>
+                    <button id="exportPdfBtn" class="btn btn-secondary">Export to PDF</button>
                 </div>
             </div>
         </div>
@@ -104,6 +105,25 @@
             <div class="btn-group">
                 <button id="confirmDeleteBtn" class="btn btn-danger">Delete</button>
                 <button id="cancelDeleteBtn" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Export Modal -->
+    <div id="pdfModal" class="modal hidden" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="card" style="max-width: 450px; margin: 2rem;">
+            <h2 class="card-header">Export to PDF</h2>
+            <p class="mb-3">Select up to 3 custom fields to include in the PDF logbook (columns 16-18):</p>
+            <div id="pdfCustomFieldsList" class="mb-3">
+                <!-- Custom fields checkboxes populated by JavaScript -->
+                <p class="text-muted" id="noCustomFieldsMsg">No custom fields defined. Go to Settings to create custom fields.</p>
+            </div>
+            <p class="text-muted mb-3" style="font-size: 0.85rem;">
+                The PDF will include standard columns for Single-Engine, Multi-Engine, and Instrument hours.
+            </p>
+            <div class="btn-group">
+                <button id="confirmPdfExportBtn" class="btn btn-primary">Export PDF</button>
+                <button id="cancelPdfExportBtn" class="btn btn-secondary">Cancel</button>
             </div>
         </div>
     </div>

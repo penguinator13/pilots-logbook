@@ -41,3 +41,6 @@ build/
 # Claude Code
 .claude/
 CLAUDE.md
+
+# Example files
+example.pdf

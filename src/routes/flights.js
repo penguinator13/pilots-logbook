@@ -756,19 +756,9 @@ router.get('/export/summary', (req, res) => {
     report += `Day Command Practice: ${totals.dayCmndPracticeHours}\n`;
     report += `Night Command Practice: ${totals.nightCmndPracticeHours}\n\n`;
 
-    report += '--- SPECIALTY OPERATIONS ---\n';
-    report += `Longline/Sling Hours: ${totals.longlineHours}\n`;
-    report += `Mountain Hours: ${totals.mountainHours}\n`;
-    report += `Instructor Hours: ${totals.instructorHours}\n`;
-    report += `Cross-Country Hours: ${totals.crosscountryHours}\n`;
-    report += `Night Vision Hours: ${totals.nightVisionHours}\n`;
-    report += `Instrument Hours: ${totals.instrumentHours}\n`;
-    report += `Simulated Instrument Hours: ${totals.simulatedInstrumentHours}\n`;
-    report += `Ground Instrument Hours: ${totals.groundInstrumentHours}\n\n`;
-
     // Add custom fields section if any exist
     if (Object.keys(totals.customFields).length > 0) {
-      report += '--- CUSTOM SPECIALTY FIELDS ---\n';
+      report += '--- CUSTOM FIELDS ---\n';
       Object.keys(totals.customFields).forEach(fieldId => {
         const cf = totals.customFields[fieldId];
         report += `${cf.label}: ${cf.hours}\n`;
