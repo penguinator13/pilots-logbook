@@ -84,50 +84,56 @@ router.get('/stats/summary', (req, res) => {
   try {
     console.log('Fetching dashboard stats for user:', req.session.userId);
 
-    // Total flight hours
+    // Total flight hours (excludes simulator flights)
     const totalHours = db.prepare(
-      'SELECT COALESCE(SUM(flight_time_hours), 0) as total FROM flights WHERE user_id = ?'
+      "SELECT COALESCE(SUM(flight_time_hours), 0) as total FROM flights WHERE user_id = ? AND aircraft_category != 'Simulator'"
     ).get(req.session.userId);
     console.log('Total hours query OK');
 
-    // Total day and night hours (sum from new fields)
+    // Ground time (simulator flights only)
+    const groundTimeHours = db.prepare(
+      "SELECT COALESCE(SUM(flight_time_hours), 0) as total FROM flights WHERE user_id = ? AND aircraft_category = 'Simulator'"
+    ).get(req.session.userId);
+    console.log('Ground time query OK');
+
+    // Total day and night hours (sum from new fields, excludes simulator)
     const dayNightHours = db.prepare(
       `SELECT
         COALESCE(SUM(day_pic + day_dual + day_sic + day_cmnd_practice), 0) as day,
         COALESCE(SUM(night_pic + night_dual + night_sic + night_cmnd_practice), 0) as night
-      FROM flights WHERE user_id = ?`
+      FROM flights WHERE user_id = ? AND aircraft_category != 'Simulator'`
     ).get(req.session.userId);
     console.log('Day/Night hours query OK');
 
-    // Total dual and PIC hours (sum from new fields)
+    // Total dual and PIC hours (sum from new fields, excludes simulator)
     const dualPicHours = db.prepare(
       `SELECT
         COALESCE(SUM(day_dual + night_dual), 0) as dual,
         COALESCE(SUM(day_pic + night_pic), 0) as pic
-      FROM flights WHERE user_id = ?`
+      FROM flights WHERE user_id = ? AND aircraft_category != 'Simulator'`
     ).get(req.session.userId);
     console.log('Dual/PIC hours query OK:', dualPicHours);
 
     // Hours by aircraft type (flight count excludes prime entries)
     const hoursByAircraft = db.prepare(`
-      SELECT aircraft_type, SUM(flight_time_hours) as hours,
+      SELECT aircraft_type, aircraft_category, SUM(flight_time_hours) as hours,
         SUM(CASE WHEN flight_details IS NULL OR flight_details NOT LIKE '%LOGBOOK PRIME ENTRY%' THEN 1 ELSE 0 END) as flights
       FROM flights
       WHERE user_id = ?
-      GROUP BY aircraft_type
+      GROUP BY aircraft_type, aircraft_category
       ORDER BY hours DESC
     `).all(req.session.userId);
     console.log('Aircraft breakdown query OK');
 
-    // Total flights count (excludes prime entries)
+    // Total flights count (excludes prime entries and simulator flights)
     const totalFlights = db.prepare(
-      "SELECT COUNT(*) as count FROM flights WHERE user_id = ? AND (flight_details IS NULL OR flight_details NOT LIKE '%LOGBOOK PRIME ENTRY%')"
+      "SELECT COUNT(*) as count FROM flights WHERE user_id = ? AND aircraft_category != 'Simulator' AND (flight_details IS NULL OR flight_details NOT LIKE '%LOGBOOK PRIME ENTRY%')"
     ).get(req.session.userId);
     console.log('Total flights query OK');
 
     // Last 10 flights - select specific columns to avoid issues with missing columns
     const recentFlights = db.prepare(`
-      SELECT id, date, aircraft_type, registration, pilot_in_command, copilot_student,
+      SELECT id, date, aircraft_type, aircraft_category, registration, pilot_in_command, copilot_student,
              flight_details, flight_time_hours, day_hours, night_hours,
              longline_hours, mountain_hours, instructor_hours,
              COALESCE(crosscountry_hours, 0) as crosscountry_hours,
@@ -138,6 +144,7 @@ router.get('/stats/summary', (req, res) => {
 
     const response = {
       totalHours: totalHours.total,
+      groundTimeHours: groundTimeHours.total,
       totalDayHours: dayNightHours.day,
       totalNightHours: dayNightHours.night,
       totalDualHours: dualPicHours.dual,
@@ -456,7 +463,7 @@ router.get('/export/csv', (req, res) => {
       'SELECT id, field_label FROM custom_fields WHERE user_id = ? ORDER BY id ASC'
     ).all(req.session.userId);
 
-    // CSV header - simple format with all fields
+    // CSV header - simple format with all fields (legacy specialty hours removed)
     const headers = [
       'Date',
       'Aircraft Category',
@@ -475,14 +482,6 @@ router.get('/export/csv', (req, res) => {
       'Night SIC',
       'Day Command Practice',
       'Night Command Practice',
-      'Longline Hours',
-      'Mountain Hours',
-      'Instructor Hours',
-      'Cross-Country Hours',
-      'Night Vision Hours',
-      'Instrument Hours',
-      'Simulated Instrument Hours',
-      'Ground Instrument Hours',
       ...customFields.map(cf => cf.field_label),
       'Takeoffs Day',
       'Takeoffs Night',
@@ -524,14 +523,6 @@ router.get('/export/csv', (req, res) => {
         flight.night_sic || 0,
         flight.day_cmnd_practice || 0,
         flight.night_cmnd_practice || 0,
-        flight.longline_hours || 0,
-        flight.mountain_hours || 0,
-        flight.instructor_hours || 0,
-        flight.crosscountry_hours || 0,
-        flight.night_vision_hours || 0,
-        flight.instrument_hours || 0,
-        flight.simulated_instrument_hours || 0,
-        flight.ground_instrument_hours || 0,
         ...customFields.map(cf => customFieldValues[cf.id] || 0),
         flight.takeoffs_day || 0,
         flight.takeoffs_night || 0,
@@ -568,8 +559,9 @@ router.get('/export/summary', (req, res) => {
 
     // Calculate totals
     const totals = {
-      totalFlights: flights.length,
+      totalFlights: 0,
       totalHours: 0,
+      groundTimeHours: 0,
       dayPicHours: 0,
       nightPicHours: 0,
       dayDualHours: 0,
@@ -584,14 +576,6 @@ router.get('/export/summary', (req, res) => {
       totalCmndPracticeHours: 0,
       totalDayHours: 0,
       totalNightHours: 0,
-      longlineHours: 0,
-      mountainHours: 0,
-      instructorHours: 0,
-      crosscountryHours: 0,
-      nightVisionHours: 0,
-      instrumentHours: 0,
-      simulatedInstrumentHours: 0,
-      groundInstrumentHours: 0,
       totalTakeoffsDay: 0,
       totalTakeoffsNight: 0,
       totalLandingsDay: 0,
@@ -608,76 +592,85 @@ router.get('/export/summary', (req, res) => {
     });
 
     flights.forEach(flight => {
-      // Total hours
-      totals.totalHours += flight.flight_time_hours || 0;
+      const isSimulator = flight.aircraft_category === 'Simulator';
+      const isPrimeEntry = flight.flight_details && flight.flight_details.includes('LOGBOOK PRIME ENTRY');
 
-      // Flight time breakdown
-      const dayPic = flight.day_pic || 0;
-      const nightPic = flight.night_pic || 0;
-      const dayDual = flight.day_dual || 0;
-      const nightDual = flight.night_dual || 0;
-      const daySic = flight.day_sic || 0;
-      const nightSic = flight.night_sic || 0;
-      const dayCmndPractice = flight.day_cmnd_practice || 0;
-      const nightCmndPractice = flight.night_cmnd_practice || 0;
+      // Simulator flights go to ground time, not flight time
+      if (isSimulator) {
+        totals.groundTimeHours += flight.flight_time_hours || 0;
+      } else {
+        // Total hours (excludes simulator)
+        totals.totalHours += flight.flight_time_hours || 0;
 
-      totals.dayPicHours += dayPic;
-      totals.nightPicHours += nightPic;
-      totals.dayDualHours += dayDual;
-      totals.nightDualHours += nightDual;
-      totals.daySicHours += daySic;
-      totals.nightSicHours += nightSic;
-      totals.dayCmndPracticeHours += dayCmndPractice;
-      totals.nightCmndPracticeHours += nightCmndPractice;
+        // Count flights (excludes simulator and prime entries)
+        if (!isPrimeEntry) {
+          totals.totalFlights += 1;
+        }
 
-      totals.totalPicHours += dayPic + nightPic;
-      totals.totalDualHours += dayDual + nightDual;
-      totals.totalSicHours += daySic + nightSic;
-      totals.totalCmndPracticeHours += dayCmndPractice + nightCmndPractice;
-      totals.totalDayHours += dayPic + dayDual + daySic + dayCmndPractice;
-      totals.totalNightHours += nightPic + nightDual + nightSic + nightCmndPractice;
+        // Flight time breakdown (only for non-simulator flights)
+        const dayPic = flight.day_pic || 0;
+        const nightPic = flight.night_pic || 0;
+        const dayDual = flight.day_dual || 0;
+        const nightDual = flight.night_dual || 0;
+        const daySic = flight.day_sic || 0;
+        const nightSic = flight.night_sic || 0;
+        const dayCmndPractice = flight.day_cmnd_practice || 0;
+        const nightCmndPractice = flight.night_cmnd_practice || 0;
 
-      // Specialty hours
-      totals.longlineHours += flight.longline_hours || 0;
-      totals.mountainHours += flight.mountain_hours || 0;
-      totals.instructorHours += flight.instructor_hours || 0;
-      totals.crosscountryHours += flight.crosscountry_hours || 0;
-      totals.nightVisionHours += flight.night_vision_hours || 0;
-      totals.instrumentHours += flight.instrument_hours || 0;
-      totals.simulatedInstrumentHours += flight.simulated_instrument_hours || 0;
-      totals.groundInstrumentHours += flight.ground_instrument_hours || 0;
+        totals.dayPicHours += dayPic;
+        totals.nightPicHours += nightPic;
+        totals.dayDualHours += dayDual;
+        totals.nightDualHours += nightDual;
+        totals.daySicHours += daySic;
+        totals.nightSicHours += nightSic;
+        totals.dayCmndPracticeHours += dayCmndPractice;
+        totals.nightCmndPracticeHours += nightCmndPractice;
 
-      // Takeoffs and landings
-      totals.totalTakeoffsDay += flight.takeoffs_day || 0;
-      totals.totalTakeoffsNight += flight.takeoffs_night || 0;
-      totals.totalLandingsDay += flight.landings_day || 0;
-      totals.totalLandingsNight += flight.landings_night || 0;
+        totals.totalPicHours += dayPic + nightPic;
+        totals.totalDualHours += dayDual + nightDual;
+        totals.totalSicHours += daySic + nightSic;
+        totals.totalCmndPracticeHours += dayCmndPractice + nightCmndPractice;
+        totals.totalDayHours += dayPic + dayDual + daySic + dayCmndPractice;
+        totals.totalNightHours += nightPic + nightDual + nightSic + nightCmndPractice;
 
-      // By aircraft category
+        // Takeoffs and landings (only for non-simulator flights)
+        totals.totalTakeoffsDay += flight.takeoffs_day || 0;
+        totals.totalTakeoffsNight += flight.takeoffs_night || 0;
+        totals.totalLandingsDay += flight.landings_day || 0;
+        totals.totalLandingsNight += flight.landings_night || 0;
+      }
+
+      // By aircraft category (includes all flights including simulator)
       const category = flight.aircraft_category || 'Helicopter';
       if (!totals.byAircraftCategory[category]) {
         totals.byAircraftCategory[category] = { hours: 0, flights: 0 };
       }
       totals.byAircraftCategory[category].hours += flight.flight_time_hours || 0;
-      totals.byAircraftCategory[category].flights += 1;
+      if (!isPrimeEntry) {
+        totals.byAircraftCategory[category].flights += 1;
+      }
 
-      // By engine type
+      // By engine type (includes all flights including simulator)
       const engineType = flight.engine_type || 'Single Engine';
       if (!totals.byEngineType[engineType]) {
         totals.byEngineType[engineType] = { hours: 0, flights: 0 };
       }
       totals.byEngineType[engineType].hours += flight.flight_time_hours || 0;
-      totals.byEngineType[engineType].flights += 1;
+      if (!isPrimeEntry) {
+        totals.byEngineType[engineType].flights += 1;
+      }
 
-      // By aircraft type
+      // By aircraft type (includes all flights including simulator)
       const aircraftType = flight.aircraft_type;
       if (!totals.byAircraftType[aircraftType]) {
         totals.byAircraftType[aircraftType] = { hours: 0, flights: 0 };
       }
       totals.byAircraftType[aircraftType].hours += flight.flight_time_hours || 0;
-      totals.byAircraftType[aircraftType].flights += 1;
+      if (!isPrimeEntry) {
+        totals.byAircraftType[aircraftType].flights += 1;
+      }
 
-      // Custom field values
+      // Custom field values (applies to ALL flights including simulator)
       if (customFields.length > 0) {
         const customFieldValues = db.prepare(`
           SELECT field_id, value
@@ -695,6 +688,7 @@ router.get('/export/summary', (req, res) => {
 
     // Round all hours to 2 decimal places
     totals.totalHours = Math.round(totals.totalHours * 100) / 100;
+    totals.groundTimeHours = Math.round(totals.groundTimeHours * 100) / 100;
     totals.dayPicHours = Math.round(totals.dayPicHours * 100) / 100;
     totals.nightPicHours = Math.round(totals.nightPicHours * 100) / 100;
     totals.dayDualHours = Math.round(totals.dayDualHours * 100) / 100;
@@ -709,14 +703,6 @@ router.get('/export/summary', (req, res) => {
     totals.totalCmndPracticeHours = Math.round(totals.totalCmndPracticeHours * 100) / 100;
     totals.totalDayHours = Math.round(totals.totalDayHours * 100) / 100;
     totals.totalNightHours = Math.round(totals.totalNightHours * 100) / 100;
-    totals.longlineHours = Math.round(totals.longlineHours * 100) / 100;
-    totals.mountainHours = Math.round(totals.mountainHours * 100) / 100;
-    totals.instructorHours = Math.round(totals.instructorHours * 100) / 100;
-    totals.crosscountryHours = Math.round(totals.crosscountryHours * 100) / 100;
-    totals.nightVisionHours = Math.round(totals.nightVisionHours * 100) / 100;
-    totals.instrumentHours = Math.round(totals.instrumentHours * 100) / 100;
-    totals.simulatedInstrumentHours = Math.round(totals.simulatedInstrumentHours * 100) / 100;
-    totals.groundInstrumentHours = Math.round(totals.groundInstrumentHours * 100) / 100;
 
     // Round hours in breakdowns
     Object.keys(totals.byAircraftCategory).forEach(key => {
@@ -737,7 +723,8 @@ router.get('/export/summary', (req, res) => {
     // Format as text report
     let report = '=== FLIGHT EXPERIENCE SUMMARY ===\n\n';
     report += `Total Flights: ${totals.totalFlights}\n`;
-    report += `Total Hours: ${totals.totalHours}\n\n`;
+    report += `Total Hours: ${totals.totalHours}\n`;
+    report += `Ground Time (Simulator): ${totals.groundTimeHours}\n\n`;
 
     report += '--- FLIGHT TIME BREAKDOWN ---\n';
     report += `Total Day Hours: ${totals.totalDayHours}\n`;

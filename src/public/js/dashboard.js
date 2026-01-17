@@ -98,6 +98,7 @@ function displayStats(stats) {
     document.getElementById('nightHours').textContent = stats.totalNightHours.toFixed(1);
     document.getElementById('dualHours').textContent = stats.totalDualHours.toFixed(1);
     document.getElementById('picHours').textContent = stats.totalPicHours.toFixed(1);
+    document.getElementById('groundTimeHours').textContent = (stats.groundTimeHours || 0).toFixed(1);
 }
 
 function displayAircraftBreakdown(aircraftData) {
@@ -111,19 +112,23 @@ function displayAircraftBreakdown(aircraftData) {
     // Sort by hours (descending)
     const sorted = aircraftData.sort((a, b) => b.hours - a.hours);
 
-    const html = sorted.map(item => `
+    const html = sorted.map(item => {
+        const isSimulator = item.aircraft_category === 'Simulator';
+        const categoryLabel = isSimulator ? ' (Sim)' : '';
+        return `
         <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border);">
             <div>
-                <span style="font-weight: 600; color: var(--text-primary);">${escapeHtml(item.aircraft_type)}</span>
+                <span style="font-weight: 600; color: var(--text-primary);">${escapeHtml(item.aircraft_type)}${categoryLabel}</span>
                 <span style="font-size: 0.875rem; color: var(--text-secondary); margin-left: 0.5rem;">
-                    ${item.flights} flight${item.flights !== 1 ? 's' : ''}
+                    ${item.flights} ${isSimulator ? 'session' : 'flight'}${item.flights !== 1 ? 's' : ''}
                 </span>
             </div>
-            <div style="font-weight: 700; color: var(--primary-color);">
+            <div style="font-weight: 700; color: ${isSimulator ? 'var(--text-secondary)' : 'var(--primary-color)'};">
                 ${item.hours.toFixed(1)} hrs
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     container.innerHTML = html;
 }
