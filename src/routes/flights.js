@@ -133,7 +133,8 @@ router.get('/:id', (req, res) => {
              longline_hours, mountain_hours, instructor_hours, crosscountry_hours,
              night_vision_hours, instrument_hours, simulated_instrument_hours, ground_instrument_hours,
              aircraft_category, engine_type,
-             takeoffs_day, takeoffs_night, landings_day, landings_night
+             takeoffs_day, takeoffs_night, landings_day, landings_night,
+             departure, arrival
       FROM flights WHERE id = ? AND user_id = ?
     `).get(req.params.id, req.session.userId);
 
@@ -252,7 +253,9 @@ router.post('/', (req, res) => {
     takeoffs_day,
     takeoffs_night,
     landings_day,
-    landings_night
+    landings_night,
+    departure,
+    arrival
   } = req.body;
 
   // Calculate total flight time using helper
@@ -274,8 +277,9 @@ router.post('/', (req, res) => {
         longline_hours, mountain_hours, instructor_hours, crosscountry_hours,
         night_vision_hours, instrument_hours, simulated_instrument_hours, ground_instrument_hours,
         aircraft_category, engine_type,
-        takeoffs_day, takeoffs_night, landings_day, landings_night
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        takeoffs_day, takeoffs_night, landings_day, landings_night,
+        departure, arrival
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -308,7 +312,9 @@ router.post('/', (req, res) => {
       parseInt(takeoffs_day) || 0,
       parseInt(takeoffs_night) || 0,
       parseInt(landings_day) || 0,
-      parseInt(landings_night) || 0
+      parseInt(landings_night) || 0,
+      departure || '',
+      arrival || ''
     );
 
     const flightId = result.lastInsertRowid;
@@ -359,7 +365,9 @@ router.put('/:id', (req, res) => {
     takeoffs_day,
     takeoffs_night,
     landings_day,
-    landings_night
+    landings_night,
+    departure,
+    arrival
   } = req.body;
 
   // Calculate total flight time using helper
@@ -382,6 +390,7 @@ router.put('/:id', (req, res) => {
         night_vision_hours = ?, instrument_hours = ?, simulated_instrument_hours = ?, ground_instrument_hours = ?,
         aircraft_category = ?, engine_type = ?,
         takeoffs_day = ?, takeoffs_night = ?, landings_day = ?, landings_night = ?,
+        departure = ?, arrival = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND user_id = ?
     `);
@@ -416,6 +425,8 @@ router.put('/:id', (req, res) => {
       parseInt(takeoffs_night) || 0,
       parseInt(landings_day) || 0,
       parseInt(landings_night) || 0,
+      departure || '',
+      arrival || '',
       req.params.id,
       req.session.userId
     );
@@ -493,6 +504,8 @@ router.get('/export/csv', (req, res) => {
       'Registration',
       'Pilot in Command',
       'Co-pilot/Student',
+      'Departure',
+      'Arrival',
       'Flight Details',
       'Total Hours',
       'Day PIC',
@@ -528,6 +541,8 @@ router.get('/export/csv', (req, res) => {
         flight.registration || '',
         flight.pilot_in_command || '',
         flight.copilot_student || '',
+        flight.departure || '',
+        flight.arrival || '',
         `"${(flight.flight_details || '').replace(/"/g, '""')}"`,
         flight.flight_time_hours,
         flight.day_pic || 0,

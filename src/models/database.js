@@ -152,6 +152,18 @@ function initializeDatabase() {
     // Column already exists
   }
 
+  // Add departure and arrival location columns
+  try {
+    db.exec(`ALTER TABLE flights ADD COLUMN departure TEXT DEFAULT ''`);
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    db.exec(`ALTER TABLE flights ADD COLUMN arrival TEXT DEFAULT ''`);
+  } catch (e) {
+    // Column already exists
+  }
+
   // Create aircraft_types table for managing saved aircraft
   db.exec(`
     CREATE TABLE IF NOT EXISTS aircraft_types (

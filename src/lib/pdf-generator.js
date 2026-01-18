@@ -7,7 +7,7 @@ const PDFDocument = require('pdfkit');
 
 class LogbookPDFGenerator {
   constructor(options = {}) {
-    this.rowsPerSpread = options.rowsPerSpread || 24;  // Fixed 24 rows per page
+    this.rowsPerSpread = options.rowsPerSpread || 22;  // Fixed 22 rows per page (fits A4 landscape)
     this.customFields = options.customFields || [];
 
     // A4 Landscape dimensions in points
@@ -208,36 +208,46 @@ class LogbookPDFGenerator {
    */
   drawPageA(doc, flights, year, pageNum, totalPages, broughtForward) {
     const contentWidth = this.pageWidth - this.marginLeft - this.marginRight;
+
+    // Header box starts at top margin and contains Year + column headers
+    const headerBoxY = this.marginTop - 5;
     let y = this.marginTop;
 
-    // Year header
-    doc.fontSize(13).font('Helvetica-Bold');
-    doc.text('Year', this.marginLeft, y);
-    y += 15;
-    doc.fontSize(15);
-    doc.text(year, this.marginLeft, y);
+    // Year header (inside the header box, left side)
+    doc.fontSize(10).font('Helvetica-Bold');
+    doc.text('Year', this.marginLeft + 3, y);
+    doc.fontSize(14);
+    doc.text(year, this.marginLeft + 3, y + 12);
 
     // Main column headers (positioned closer to sub-headers)
-    const mainHeaderY = this.marginTop + 20;
+    const mainHeaderY = this.marginTop + 12;
     doc.fontSize(11).font('Helvetica-Bold');
-
-    // Center 'Aircraft' over Type + Reg'n columns
-    const aircraftStartX = this.marginLeft + this.pageAColumns.date;
-    const aircraftWidth = this.pageAColumns.type + this.pageAColumns.registration;
-    doc.text('Aircraft', aircraftStartX, mainHeaderY, { width: aircraftWidth, align: 'center' });
 
     // Calculate centered positions for headers over their columns
     const picStartX = this.marginLeft + this.pageAColumns.date + this.pageAColumns.type + this.pageAColumns.registration;
     const copilotStartX = picStartX + this.pageAColumns.pic;
     const detailsStartX = copilotStartX + this.pageAColumns.copilot;
 
-    doc.text('Pilot in Command', picStartX, mainHeaderY, { width: this.pageAColumns.pic, align: 'center' });
-    doc.text('Co-pilot or Student', copilotStartX, mainHeaderY, { width: this.pageAColumns.copilot, align: 'center' });
+    // Center 'Aircraft' over Type + Reg'n columns
+    const aircraftStartX = this.marginLeft + this.pageAColumns.date;
+    const aircraftWidth = this.pageAColumns.type + this.pageAColumns.registration;
+    doc.text('Aircraft', aircraftStartX, mainHeaderY, { width: aircraftWidth, align: 'center' });
+
+    // "Pilot in Command" wrapped to two lines
+    doc.fontSize(10);
+    doc.text('Pilot in', picStartX, mainHeaderY - 3, { width: this.pageAColumns.pic, align: 'center' });
+    doc.text('Command', picStartX, mainHeaderY + 7, { width: this.pageAColumns.pic, align: 'center' });
+
+    // "Co-pilot or Student" wrapped to two lines
+    doc.text('Co-pilot or', copilotStartX, mainHeaderY - 3, { width: this.pageAColumns.copilot, align: 'center' });
+    doc.text('Student', copilotStartX, mainHeaderY + 7, { width: this.pageAColumns.copilot, align: 'center' });
+
+    doc.fontSize(11);
     doc.text('Details of Flight', detailsStartX, mainHeaderY, { width: this.pageAColumns.details, align: 'center' });
 
-    y = this.marginTop + 35;
+    y = this.marginTop + 32;
 
-    // Column headers
+    // Column sub-headers (Date, Type, Reg'n)
     doc.font('Helvetica-Bold').fontSize(9);
     let x = this.marginLeft;
 
@@ -254,8 +264,12 @@ class LogbookPDFGenerator {
 
     // Calculate table boundaries
     const tableStartY = y;
-    const dataStartY = y + 5 + this.rowHeight; // After header line and "Totals brought forward" row
     const tableEndX = this.marginLeft + contentWidth;
+
+    // Draw box around column headers (from top including Year to bottom of sub-headers)
+    const headerBoxHeight = y - headerBoxY;
+    doc.lineWidth(1);
+    doc.rect(this.marginLeft, headerBoxY, contentWidth, headerBoxHeight).stroke();
 
     // Calculate column X positions for vertical lines
     const colPositions = [
@@ -268,14 +282,16 @@ class LogbookPDFGenerator {
       tableEndX
     ];
 
-    // Draw header line
+    // Draw header line (bottom of header box)
     doc.lineWidth(1);
     doc.moveTo(this.marginLeft, y).lineTo(tableEndX, y).stroke();
     y += 5;
 
-    // Totals brought forward row
+    // Totals brought forward row - positioned within details column with margin clearance
     doc.font('Helvetica-Oblique').fontSize(9);
-    doc.text('Totals brought forward', this.marginLeft + contentWidth - 200, y, { align: 'right', width: 200 });
+    const tbfX = detailsStartX + 10;
+    const tbfWidth = this.pageAColumns.details - 30;  // Leave margin clearance
+    doc.text('Totals brought forward', tbfX, y, { align: 'right', width: tbfWidth });
     y += this.rowHeight;
 
     // Draw separator line after "Totals brought forward"
@@ -303,14 +319,21 @@ class LogbookPDFGenerator {
     }
 
     // Draw vertical column separator lines
-    // Lines for PIC, Co-pilot, and Details columns extend up to main header row
-    const headerRowY = this.marginTop + 15;  // Just below the main header text
+    // Line 1 (after Date) extends to top of header box
+    // Line 2 (between Type and Reg'n) starts at tableStartY (under "Aircraft" header)
+    // Lines 3+ extend to top of header box
     colPositions.forEach((xPos, index) => {
-      // Columns 0-2 (Date, Type, Reg'n) start at tableStartY (under "Aircraft")
-      // Columns 3-6 (after Reg'n, PIC, Copilot, Details end) extend to header row
-      const startY = (index >= 3) ? headerRowY : tableStartY;
-      doc.moveTo(xPos, startY).lineTo(xPos, gridEndY - 3).stroke();
+      // Skip the leftmost and rightmost lines (already drawn by the header box)
+      if (index > 0 && index < colPositions.length - 1) {
+        // Only line index 2 (between Type and Reg'n) starts at tableStartY
+        // All other lines extend to headerBoxY
+        const startY = (index === 2) ? tableStartY : headerBoxY;
+        doc.moveTo(xPos, startY).lineTo(xPos, gridEndY - 3).stroke();
+      }
     });
+    // Draw left and right edges from bottom of header box to bottom of grid
+    doc.moveTo(this.marginLeft, tableStartY).lineTo(this.marginLeft, gridEndY - 3).stroke();
+    doc.moveTo(tableEndX, tableStartY).lineTo(tableEndX, gridEndY - 3).stroke();
 
     // Fill in flight data (only for rows that have flights)
     doc.font('Helvetica').fontSize(9);
@@ -341,8 +364,9 @@ class LogbookPDFGenerator {
       doc.text(flight.copilot_student || '', x + 2, textY, { width: this.pageAColumns.copilot - 4, align: 'left' });
       x += this.pageAColumns.copilot;
 
-      // Details (truncate if too long)
-      const details = this.truncateText(flight.flight_details || '', 60);
+      // Details (truncate based on available column width - approx 5.5pt per char at 9pt font)
+      const maxChars = Math.floor((this.pageAColumns.details - 8) / 5.5);
+      const details = this.truncateText(flight.flight_details || '', maxChars);
       doc.text(details, x + 2, textY, { width: this.pageAColumns.details - 4, align: 'left' });
     });
 
@@ -355,55 +379,56 @@ class LogbookPDFGenerator {
     doc.moveTo(this.marginLeft, y).lineTo(tableEndX, y).stroke();
     y += 10;
 
-    // Footer totals
-    doc.font('Helvetica').fontSize(10);
-    doc.text('Total flight experience:', this.marginLeft, y, { lineBreak: false });
-
-    // Calculate page totals
+    // Footer totals - left side
     const cumulativeTotals = this.calculateTotals(flights, broughtForward);
+    const footerStartY = y;
 
-    // Category totals
-    const totalsX = this.marginLeft + 200;
-
-    // Aeroplane total
-    doc.text('Aeroplane', totalsX, y, { lineBreak: false });
-    doc.font('Helvetica-Bold');
-    doc.text(this.formatHours(cumulativeTotals.aeroplane_total), totalsX + 70, y, { lineBreak: false });
-
-    // Helicopter total
-    y += 12;
-    doc.font('Helvetica').fontSize(10);
-    doc.text('Helicopter', totalsX, y, { lineBreak: false });
-    doc.font('Helvetica-Bold');
-    doc.text(this.formatHours(cumulativeTotals.helicopter_total), totalsX + 70, y, { lineBreak: false });
-
-    // Simulator total (not included in grand total)
-    y += 12;
-    doc.font('Helvetica').fontSize(10);
-    doc.text('Simulator (not in total)', totalsX, y, { lineBreak: false });
-    doc.font('Helvetica-Bold');
-    doc.text(this.formatHours(cumulativeTotals.simulator_total), totalsX + 120, y, { lineBreak: false });
-
-    // Grand Total (Helicopter + Aeroplane, NOT simulator)
-    y += 12;
-    doc.font('Helvetica-Bold').fontSize(10);
-    doc.text('Grand Total', totalsX, y, { lineBreak: false });
-    doc.text(this.formatHours(cumulativeTotals.grand_total), totalsX + 70, y, { lineBreak: false });
-
-    // Right side - certification and signature
-    const certX = totalsX + 180;
     doc.font('Helvetica').fontSize(9);
-    doc.text('Entries certified correct', certX, y - 36, { lineBreak: false });
+    doc.text('Total flight experience:', this.marginLeft, y, { continued: false });
 
-    // Signature line with more space
-    y += 8;
-    doc.text('Signature ______________________', certX, y - 24, { lineBreak: false });
-    doc.text('Date ________________', certX + 220, y - 24, { lineBreak: false });
+    // Totals in two columns for compactness
+    const col1X = this.marginLeft + 120;
+    const col2X = this.marginLeft + 280;
+    const valueOffset = 95;
 
-    // Page number
-    y = this.pageHeight - this.marginBottom;
-    doc.fontSize(9);
-    doc.text(`Page ${pageNum}a of ${totalPages}`, this.pageWidth - this.marginRight - 80, y, { align: 'right', lineBreak: false });
+    // Row 1: Aeroplane and Helicopter
+    doc.text('Aeroplane', col1X, y, { continued: false });
+    doc.font('Helvetica-Bold');
+    doc.text(this.formatHours(cumulativeTotals.aeroplane_total), col1X + valueOffset, y, { continued: false });
+
+    doc.font('Helvetica').fontSize(9);
+    doc.text('Helicopter', col2X, y, { continued: false });
+    doc.font('Helvetica-Bold');
+    doc.text(this.formatHours(cumulativeTotals.helicopter_total), col2X + valueOffset, y, { continued: false });
+
+    // Row 2: Simulator and Grand Total
+    y += 11;
+    doc.font('Helvetica').fontSize(9);
+    doc.text('Simulator (not in total)', col1X, y, { continued: false });
+    doc.font('Helvetica-Bold');
+    doc.text(this.formatHours(cumulativeTotals.simulator_total), col1X + valueOffset, y, { continued: false });
+
+    doc.font('Helvetica-Bold').fontSize(9);
+    doc.text('Grand Total', col2X, y, { continued: false });
+    doc.text(this.formatHours(cumulativeTotals.grand_total), col2X + valueOffset, y, { continued: false });
+
+    // Right side - certification and signature (clearly separated)
+    const certX = this.marginLeft + 480;
+    doc.font('Helvetica').fontSize(9);
+    doc.text('Entries certified correct', certX, footerStartY, { continued: false });
+    // Signature line with space below certification text
+    const sigY = footerStartY + 18;
+    doc.text('Signature', certX, sigY, { continued: false });
+    doc.text('Date', certX + 180, sigY, { continued: false });
+
+    // Draw actual lines for signature and date (instead of underscores)
+    const lineY = sigY + 10;
+    doc.lineWidth(0.5);
+    doc.moveTo(certX + 50, lineY).lineTo(certX + 170, lineY).stroke();  // Signature line
+    doc.moveTo(certX + 205, lineY).lineTo(certX + 290, lineY).stroke();  // Date line
+
+    // Page number - bottom left corner
+    doc.text(`Page ${pageNum}a of ${totalPages}`, this.marginLeft, sigY, { continued: false });
   }
 
   /**
@@ -533,9 +558,14 @@ class LogbookPDFGenerator {
 
     y += 12;
 
+    // Draw box around entire header area (from top to separator line)
+    const headerBoxY = this.marginTop - 5;
+    const headerBoxHeight = y - headerBoxY;
+    doc.lineWidth(1);
+    doc.rect(this.marginLeft, headerBoxY, tableEndX - this.marginLeft, headerBoxHeight).stroke();
+
     // Draw header separator
     const tableStartY = y;
-    doc.lineWidth(1);
     doc.moveTo(this.marginLeft, y).lineTo(tableEndX, y).stroke();
     y += 3;
 
@@ -551,7 +581,8 @@ class LogbookPDFGenerator {
       bf.se_day_dual, bf.se_day_pic, bf.se_night_dual, bf.se_night_pic,
       bf.me_day_dual, bf.me_day_pic, bf.me_day_copilot, bf.me_day_cmnd,
       bf.me_night_dual, bf.me_night_pic, bf.me_night_copilot, bf.me_night_cmnd,
-      bf.instrument_actual, bf.instrument_simulated, bf.instrument_ground
+      bf.instrument_actual, bf.instrument_simulated, bf.instrument_ground,
+      bf.simulator_time  // SIM column (16)
     ];
 
     // Add custom field brought forward values
@@ -719,14 +750,13 @@ class LogbookPDFGenerator {
     x = this.marginLeft;
     doc.font('Helvetica').fontSize(7);
     for (let i = 1; i <= totalCols; i++) {
-      doc.text(String(i), x, y, { width: colWidth, align: 'center', lineBreak: false });
+      doc.text(String(i), x, y, { width: colWidth, align: 'center', continued: false });
       x += colWidth;
     }
 
-    // Page number
-    y = this.pageHeight - this.marginBottom;
+    // Page number - bottom left corner (same row as column numbers)
     doc.fontSize(9);
-    doc.text(`Page ${pageNum}b of ${totalPages}`, this.pageWidth - this.marginRight - 80, y, { align: 'right', lineBreak: false });
+    doc.text(`Page ${pageNum}b of ${totalPages}`, this.marginLeft - 40, y, { continued: false });
   }
 
   /**

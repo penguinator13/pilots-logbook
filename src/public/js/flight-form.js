@@ -196,6 +196,8 @@ async function loadFlightData(id, isDuplicate = false) {
         document.getElementById('registration').value = flight.registration || '';
         document.getElementById('pic').value = flight.pic || '';
         document.getElementById('copilot').value = flight.copilot || '';
+        document.getElementById('departure').value = flight.departure || '';
+        document.getElementById('arrival').value = flight.arrival || '';
         document.getElementById('route').value = flight.route || '';
 
         // Populate new flight time breakdown fields
@@ -346,6 +348,8 @@ async function submitForm() {
             registration: document.getElementById('registration').value.toUpperCase() || null,
             pic: document.getElementById('pic').value || null,
             copilot: document.getElementById('copilot').value || null,
+            departure: document.getElementById('departure').value.toUpperCase() || null,
+            arrival: document.getElementById('arrival').value.toUpperCase() || null,
             route: document.getElementById('route').value || null,
             // New flight time breakdown fields
             day_pic: parseFloat(document.getElementById('day_pic').value) || 0,

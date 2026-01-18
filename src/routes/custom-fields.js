@@ -71,6 +71,43 @@ router.post('/', (req, res) => {
   }
 });
 
+// PUT /api/custom-fields/:id - Update a custom field (rename)
+router.put('/:id', (req, res) => {
+  try {
+    const fieldId = parseInt(req.params.id);
+    const { field_label } = req.body;
+
+    if (!field_label || !field_label.trim()) {
+      return res.status(400).json({ error: 'Field label is required' });
+    }
+
+    const trimmedLabel = field_label.trim();
+
+    // Check if field exists and belongs to user
+    const field = db.prepare(`
+      SELECT id, field_name FROM custom_fields WHERE id = ? AND user_id = ?
+    `).get(fieldId, req.session.userId);
+
+    if (!field) {
+      return res.status(404).json({ error: 'Custom field not found' });
+    }
+
+    // Update the field label (field_name stays the same for internal consistency)
+    db.prepare(`
+      UPDATE custom_fields SET field_label = ? WHERE id = ? AND user_id = ?
+    `).run(trimmedLabel, fieldId, req.session.userId);
+
+    const updated = db.prepare(`
+      SELECT id, field_name, field_label, created_at FROM custom_fields WHERE id = ?
+    `).get(fieldId);
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Update custom field error:', error);
+    res.status(500).json({ error: 'Failed to update custom field' });
+  }
+});
+
 // DELETE /api/custom-fields/:id - Delete a custom field
 router.delete('/:id', (req, res) => {
   try {

@@ -4,6 +4,8 @@
 let aircraftToDelete = null;
 let customFieldToDelete = null;
 let tagToDelete = null;
+let aircraftToEdit = null;
+let customFieldToEdit = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Check authentication
@@ -155,7 +157,10 @@ function displayAircraft(aircraft) {
                 <div class="aircraft-name">${escapeHtml(item.name)}</div>
                 <div class="aircraft-meta">Added ${formatDate(item.created_at)}</div>
             </div>
-            <button class="btn btn-small btn-danger" onclick="confirmDeleteAircraft(${item.id}, '${safeName}')">Delete</button>
+            <div class="btn-group-inline">
+                <button class="btn btn-small btn-secondary" onclick="editAircraft(${item.id}, '${safeName}')">Edit</button>
+                <button class="btn btn-small btn-danger" onclick="confirmDeleteAircraft(${item.id}, '${safeName}')">Delete</button>
+            </div>
         </div>
     `;
     }).join('');
@@ -297,6 +302,74 @@ async function deleteAircraft() {
     }
 }
 
+function editAircraft(id, name) {
+    aircraftToEdit = id;
+    const modal = document.getElementById('editAircraftModal');
+    document.getElementById('editAircraftName').value = name;
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    const form = document.getElementById('editAircraftForm');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        await saveAircraftEdit();
+    };
+
+    document.getElementById('cancelEditAircraftBtn').onclick = () => {
+        closeEditAircraftModal();
+    };
+}
+
+function closeEditAircraftModal() {
+    const modal = document.getElementById('editAircraftModal');
+    modal.style.display = 'none';
+    aircraftToEdit = null;
+}
+
+async function saveAircraftEdit() {
+    const newName = document.getElementById('editAircraftName').value.trim();
+    const successAlert = document.getElementById('successAlert');
+    const errorAlert = document.getElementById('errorAlert');
+
+    if (!newName) {
+        alert('Aircraft name is required');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/aircraft/${aircraftToEdit}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to update aircraft');
+        }
+
+        closeEditAircraftModal();
+
+        const flightsUpdated = data.flights_updated || 0;
+        const message = flightsUpdated > 0
+            ? `Aircraft type updated successfully. ${flightsUpdated} flight(s) were updated.`
+            : 'Aircraft type updated successfully.';
+
+        successAlert.textContent = message;
+        successAlert.classList.remove('hidden');
+        setTimeout(() => successAlert.classList.add('hidden'), 4000);
+
+        await loadAircraftList();
+
+    } catch (error) {
+        console.error('Edit aircraft error:', error);
+        errorAlert.textContent = error.message;
+        errorAlert.classList.remove('hidden');
+        setTimeout(() => errorAlert.classList.add('hidden'), 5000);
+    }
+}
+
 // ==================== CUSTOM FIELDS MANAGEMENT ====================
 
 async function loadCustomFields() {
@@ -344,15 +417,21 @@ async function loadCustomFields() {
 function displayCustomFields(customFields) {
     const customFieldsList = document.getElementById('customFieldsList');
 
-    const html = customFields.map(item => `
+    const html = customFields.map(item => {
+        const safeLabel = item.field_label.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        return `
         <div class="custom-field-item">
             <div>
                 <div class="field-name">${escapeHtml(item.field_label)}</div>
                 <div class="field-meta">Field name: ${escapeHtml(item.field_name)} • Added ${formatDate(item.created_at)}</div>
             </div>
-            <button class="btn btn-small btn-danger" onclick="confirmDeleteCustomField(${item.id}, '${escapeHtml(item.field_label)}')">Delete</button>
+            <div class="btn-group-inline">
+                <button class="btn btn-small btn-secondary" onclick="editCustomField(${item.id}, '${safeLabel}')">Edit</button>
+                <button class="btn btn-small btn-danger" onclick="confirmDeleteCustomField(${item.id}, '${safeLabel}')">Delete</button>
+            </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     customFieldsList.innerHTML = html;
 }
@@ -495,6 +574,69 @@ async function deleteCustomField() {
     } finally {
         confirmBtn.disabled = false;
         confirmBtn.textContent = 'Delete';
+    }
+}
+
+function editCustomField(id, label) {
+    customFieldToEdit = id;
+    const modal = document.getElementById('editCustomFieldModal');
+    document.getElementById('editFieldLabel').value = label;
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    const form = document.getElementById('editCustomFieldForm');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        await saveCustomFieldEdit();
+    };
+
+    document.getElementById('cancelEditCustomFieldBtn').onclick = () => {
+        closeEditCustomFieldModal();
+    };
+}
+
+function closeEditCustomFieldModal() {
+    const modal = document.getElementById('editCustomFieldModal');
+    modal.style.display = 'none';
+    customFieldToEdit = null;
+}
+
+async function saveCustomFieldEdit() {
+    const newLabel = document.getElementById('editFieldLabel').value.trim();
+    const successAlert = document.getElementById('successAlert');
+    const errorAlert = document.getElementById('errorAlert');
+
+    if (!newLabel) {
+        alert('Field label is required');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/custom-fields/${customFieldToEdit}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ field_label: newLabel }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to update custom field');
+        }
+
+        closeEditCustomFieldModal();
+
+        successAlert.textContent = 'Custom field updated successfully.';
+        successAlert.classList.remove('hidden');
+        setTimeout(() => successAlert.classList.add('hidden'), 3000);
+
+        await loadCustomFields();
+
+    } catch (error) {
+        console.error('Edit custom field error:', error);
+        errorAlert.textContent = error.message;
+        errorAlert.classList.remove('hidden');
+        setTimeout(() => errorAlert.classList.add('hidden'), 5000);
     }
 }
 
@@ -886,7 +1028,9 @@ function calculatePrimeTotal() {
 // ==================== UTILITY FUNCTIONS ====================
 // formatDate, escapeHtml are provided by common.js
 
-// Make delete functions available globally for onclick handlers
+// Make functions available globally for onclick handlers
 window.confirmDeleteAircraft = confirmDeleteAircraft;
 window.confirmDeleteCustomField = confirmDeleteCustomField;
 window.confirmDeleteTag = confirmDeleteTag;
+window.editAircraft = editAircraft;
+window.editCustomField = editCustomField;
