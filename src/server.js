@@ -1,6 +1,7 @@
 const express = require('express');
 const session = require('express-session');
 const bodyParser = require('body-parser');
+const compression = require('compression');
 const path = require('path');
 
 // Import routes
@@ -17,6 +18,7 @@ const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change-this-secret-in-production';
 
 // Middleware
+app.use(compression()); // Gzip compression for all responses
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 

@@ -56,23 +56,32 @@ router.get('/pdf', (req, res) => {
       `).all(...fieldIds, req.session.userId);
     }
 
-    // Fetch custom field values for all flights
+    // Fetch custom field values for all flights (batch query to fix N+1)
     if (customFields.length > 0) {
       const fieldIdList = customFields.map(cf => cf.id);
+      const flightIds = flights.map(f => f.id);
+      const flightPlaceholders = flightIds.map(() => '?').join(',');
       const cfPlaceholders = fieldIdList.map(() => '?').join(',');
 
+      // Single query to fetch all custom field values for all flights
+      const allValues = db.prepare(`
+        SELECT flight_id, field_id, value
+        FROM custom_field_values
+        WHERE flight_id IN (${flightPlaceholders}) AND field_id IN (${cfPlaceholders})
+      `).all(...flightIds, ...fieldIdList);
+
+      // Group values by flight_id
+      const valuesByFlight = {};
+      allValues.forEach(v => {
+        if (!valuesByFlight[v.flight_id]) {
+          valuesByFlight[v.flight_id] = {};
+        }
+        valuesByFlight[v.flight_id][v.field_id] = v.value || 0;
+      });
+
+      // Assign to flights
       flights.forEach(flight => {
-        flight.customFieldValues = {};
-
-        const values = db.prepare(`
-          SELECT field_id, value
-          FROM custom_field_values
-          WHERE flight_id = ? AND field_id IN (${cfPlaceholders})
-        `).all(flight.id, ...fieldIdList);
-
-        values.forEach(v => {
-          flight.customFieldValues[v.field_id] = v.value || 0;
-        });
+        flight.customFieldValues = valuesByFlight[flight.id] || {};
       });
     } else {
       // Initialize empty customFieldValues for all flights

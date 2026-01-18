@@ -1,4 +1,5 @@
 // Dashboard functionality
+// Note: checkAuth, setupNavigation, logout, escapeHtml, formatDate, truncate are provided by common.js
 
 document.addEventListener('DOMContentLoaded', () => {
     // Check authentication
@@ -10,49 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load dashboard data
     loadDashboard();
 });
-
-async function checkAuth() {
-    try {
-        const response = await fetch('/api/auth/me');
-        if (!response.ok) {
-            window.location.href = '/login.html';
-        }
-    } catch (error) {
-        console.error('Auth check error:', error);
-        window.location.href = '/login.html';
-    }
-}
-
-function setupNavigation() {
-    // Mobile navigation toggle
-    const navToggle = document.getElementById('navToggle');
-    const navMenu = document.getElementById('navMenu');
-
-    if (navToggle) {
-        navToggle.addEventListener('click', () => {
-            navMenu.classList.toggle('show');
-        });
-    }
-
-    // Logout button
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await logout();
-        });
-    }
-}
-
-async function logout() {
-    try {
-        await fetch('/api/auth/logout', { method: 'POST' });
-        window.location.href = '/login.html';
-    } catch (error) {
-        console.error('Logout error:', error);
-        window.location.href = '/login.html';
-    }
-}
 
 async function loadDashboard() {
     const loading = document.getElementById('loading');
@@ -162,26 +120,4 @@ function displayRecentFlights(flights) {
     container.innerHTML = html;
 }
 
-// Utility functions
-function formatDate(dateString) {
-    // Parse as local date to avoid timezone shift (dateString is YYYY-MM-DD)
-    const [year, month, day] = dateString.split('-');
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function truncate(text, maxLength) {
-    if (!text || text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-}
+// Utility functions (formatDate, escapeHtml, truncate) are provided by common.js

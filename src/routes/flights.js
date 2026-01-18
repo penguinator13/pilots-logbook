@@ -6,6 +6,86 @@ const router = express.Router();
 // All routes require authentication
 router.use(requireAuth);
 
+// ==================== HELPER FUNCTIONS ====================
+
+/**
+ * Calculate total flight time from component fields
+ */
+function calculateFlightTime(data) {
+  return (
+    (parseFloat(data.day_pic) || 0) +
+    (parseFloat(data.night_pic) || 0) +
+    (parseFloat(data.day_dual) || 0) +
+    (parseFloat(data.night_dual) || 0) +
+    (parseFloat(data.day_sic) || 0) +
+    (parseFloat(data.night_sic) || 0) +
+    (parseFloat(data.day_cmnd_practice) || 0) +
+    (parseFloat(data.night_cmnd_practice) || 0)
+  );
+}
+
+/**
+ * Validate flight data
+ * @returns {{ valid: boolean, error?: string }}
+ */
+function validateFlightData(data, flight_time) {
+  if (!data.date || !data.aircraft_type) {
+    return { valid: false, error: 'Missing required fields: Date and Aircraft Type are required' };
+  }
+
+  if (flight_time <= 0) {
+    return { valid: false, error: 'Total flight time must be greater than 0. Please enter at least one flight time value.' };
+  }
+
+  const flightDate = new Date(data.date);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+
+  if (flightDate > today) {
+    return { valid: false, error: 'Flight date cannot be in the future' };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Batch fetch custom field values for multiple flights
+ * @param {number[]} flightIds - Array of flight IDs
+ * @returns {Object} Map of flight_id -> { field_id: value }
+ */
+function batchFetchCustomFieldValues(flightIds) {
+  if (!flightIds || flightIds.length === 0) {
+    return {};
+  }
+
+  const placeholders = flightIds.map(() => '?').join(',');
+  const allValues = db.prepare(`
+    SELECT flight_id, field_id, value
+    FROM custom_field_values
+    WHERE flight_id IN (${placeholders})
+  `).all(...flightIds);
+
+  // Group by flight_id
+  const result = {};
+  allValues.forEach(row => {
+    if (!result[row.flight_id]) {
+      result[row.flight_id] = {};
+    }
+    result[row.flight_id][row.field_id] = row.value;
+  });
+
+  return result;
+}
+
+/**
+ * Round a number to 2 decimal places
+ */
+function roundHours(value) {
+  return Math.round(value * 100) / 100;
+}
+
+// ==================== ROUTES ====================
+
 // Get all flights with pagination and filtering
 router.get('/', (req, res) => {
   const page = parseInt(req.query.page) || 1;
@@ -82,19 +162,15 @@ router.get('/:id', (req, res) => {
 // Get dashboard statistics
 router.get('/stats/summary', (req, res) => {
   try {
-    console.log('Fetching dashboard stats for user:', req.session.userId);
-
     // Total flight hours (excludes simulator flights)
     const totalHours = db.prepare(
       "SELECT COALESCE(SUM(flight_time_hours), 0) as total FROM flights WHERE user_id = ? AND aircraft_category != 'Simulator'"
     ).get(req.session.userId);
-    console.log('Total hours query OK');
 
     // Ground time (simulator flights only)
     const groundTimeHours = db.prepare(
       "SELECT COALESCE(SUM(flight_time_hours), 0) as total FROM flights WHERE user_id = ? AND aircraft_category = 'Simulator'"
     ).get(req.session.userId);
-    console.log('Ground time query OK');
 
     // Total day and night hours (sum from new fields, excludes simulator)
     const dayNightHours = db.prepare(
@@ -103,7 +179,6 @@ router.get('/stats/summary', (req, res) => {
         COALESCE(SUM(night_pic + night_dual + night_sic + night_cmnd_practice), 0) as night
       FROM flights WHERE user_id = ? AND aircraft_category != 'Simulator'`
     ).get(req.session.userId);
-    console.log('Day/Night hours query OK');
 
     // Total dual and PIC hours (sum from new fields, excludes simulator)
     const dualPicHours = db.prepare(
@@ -112,7 +187,6 @@ router.get('/stats/summary', (req, res) => {
         COALESCE(SUM(day_pic + night_pic), 0) as pic
       FROM flights WHERE user_id = ? AND aircraft_category != 'Simulator'`
     ).get(req.session.userId);
-    console.log('Dual/PIC hours query OK:', dualPicHours);
 
     // Hours by aircraft type (flight count excludes prime entries)
     const hoursByAircraft = db.prepare(`
@@ -123,13 +197,11 @@ router.get('/stats/summary', (req, res) => {
       GROUP BY aircraft_type, aircraft_category
       ORDER BY hours DESC
     `).all(req.session.userId);
-    console.log('Aircraft breakdown query OK');
 
     // Total flights count (excludes prime entries and simulator flights)
     const totalFlights = db.prepare(
       "SELECT COUNT(*) as count FROM flights WHERE user_id = ? AND aircraft_category != 'Simulator' AND (flight_details IS NULL OR flight_details NOT LIKE '%LOGBOOK PRIME ENTRY%')"
     ).get(req.session.userId);
-    console.log('Total flights query OK');
 
     // Last 10 flights - select specific columns to avoid issues with missing columns
     const recentFlights = db.prepare(`
@@ -140,9 +212,8 @@ router.get('/stats/summary', (req, res) => {
              takeoffs_day, takeoffs_night, landings_day, landings_night
       FROM flights WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT 10
     `).all(req.session.userId);
-    console.log('Recent flights query OK');
 
-    const response = {
+    res.json({
       totalHours: totalHours.total,
       groundTimeHours: groundTimeHours.total,
       totalDayHours: dayNightHours.day,
@@ -152,14 +223,10 @@ router.get('/stats/summary', (req, res) => {
       totalFlights: totalFlights.count,
       byAircraft: hoursByAircraft,
       flights: recentFlights
-    };
-
-    console.log('Sending response:', JSON.stringify(response).substring(0, 200));
-    res.json(response);
+    });
   } catch (error) {
-    console.error('Error fetching statistics:', error.message);
-    console.error('Stack trace:', error.stack);
-    res.status(500).json({ error: 'Error fetching statistics: ' + error.message });
+    console.error('Error fetching statistics:', error);
+    res.status(500).json({ error: 'Error fetching statistics' });
   }
 });
 
@@ -188,33 +255,13 @@ router.post('/', (req, res) => {
     landings_night
   } = req.body;
 
-  // Calculate total flight time from component fields
-  const flight_time = (
-    (parseFloat(day_pic) || 0) +
-    (parseFloat(night_pic) || 0) +
-    (parseFloat(day_dual) || 0) +
-    (parseFloat(night_dual) || 0) +
-    (parseFloat(day_sic) || 0) +
-    (parseFloat(night_sic) || 0) +
-    (parseFloat(day_cmnd_practice) || 0) +
-    (parseFloat(night_cmnd_practice) || 0)
-  );
+  // Calculate total flight time using helper
+  const flight_time = calculateFlightTime(req.body);
 
-  // Validation - only date and aircraft_type are required
-  if (!date || !aircraft_type) {
-    return res.status(400).json({ error: 'Missing required fields: Date and Aircraft Type are required' });
-  }
-
-  if (flight_time <= 0) {
-    return res.status(400).json({ error: 'Total flight time must be greater than 0. Please enter at least one flight time value.' });
-  }
-
-  const flightDate = new Date(date);
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-
-  if (flightDate > today) {
-    return res.status(400).json({ error: 'Flight date cannot be in the future' });
+  // Validate using helper
+  const validation = validateFlightData(req.body, flight_time);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
   }
 
   try {
@@ -315,33 +362,13 @@ router.put('/:id', (req, res) => {
     landings_night
   } = req.body;
 
-  // Calculate total flight time from component fields
-  const flight_time = (
-    (parseFloat(day_pic) || 0) +
-    (parseFloat(night_pic) || 0) +
-    (parseFloat(day_dual) || 0) +
-    (parseFloat(night_dual) || 0) +
-    (parseFloat(day_sic) || 0) +
-    (parseFloat(night_sic) || 0) +
-    (parseFloat(day_cmnd_practice) || 0) +
-    (parseFloat(night_cmnd_practice) || 0)
-  );
+  // Calculate total flight time using helper
+  const flight_time = calculateFlightTime(req.body);
 
-  // Validation - only date and aircraft_type are required
-  if (!date || !aircraft_type) {
-    return res.status(400).json({ error: 'Missing required fields: Date and Aircraft Type are required' });
-  }
-
-  if (flight_time <= 0) {
-    return res.status(400).json({ error: 'Total flight time must be greater than 0. Please enter at least one flight time value.' });
-  }
-
-  const flightDate = new Date(date);
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-
-  if (flightDate > today) {
-    return res.status(400).json({ error: 'Flight date cannot be in the future' });
+  // Validate using helper
+  const validation = validateFlightData(req.body, flight_time);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
   }
 
   try {
@@ -427,23 +454,17 @@ router.put('/:id', (req, res) => {
 // Delete flight
 router.delete('/:id', (req, res) => {
   try {
-    console.log('Delete request for flight:', req.params.id, 'by user:', req.session.userId);
     const stmt = db.prepare('DELETE FROM flights WHERE id = ? AND user_id = ?');
     const result = stmt.run(req.params.id, req.session.userId);
 
-    console.log('Delete result - changes:', result.changes);
-
     if (result.changes === 0) {
-      console.log('Flight not found or unauthorized');
       return res.status(404).json({ error: 'Flight not found' });
     }
 
-    console.log('Flight deleted successfully');
     res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting flight:', error.message);
-    console.error('Stack:', error.stack);
-    res.status(500).json({ error: 'Error deleting flight: ' + error.message });
+    console.error('Error deleting flight:', error);
+    res.status(500).json({ error: 'Error deleting flight' });
   }
 });
 
@@ -491,19 +512,13 @@ router.get('/export/csv', (req, res) => {
 
     let csv = headers.join(',') + '\n';
 
+    // Batch fetch custom field values (fixes N+1 query)
+    const flightIds = flights.map(f => f.id);
+    const allCustomFieldValues = customFields.length > 0 ? batchFetchCustomFieldValues(flightIds) : {};
+
     flights.forEach(flight => {
-      // Get custom field values for this flight
-      const customFieldValues = {};
-      if (customFields.length > 0) {
-        const cfValues = db.prepare(`
-          SELECT field_id, value
-          FROM custom_field_values
-          WHERE flight_id = ?
-        `).all(flight.id);
-        cfValues.forEach(cfv => {
-          customFieldValues[cfv.field_id] = cfv.value;
-        });
-      }
+      // Get custom field values from batch result
+      const customFieldValues = allCustomFieldValues[flight.id] || {};
 
       const row = [
         flight.date,
@@ -591,6 +606,10 @@ router.get('/export/summary', (req, res) => {
       totals.customFields[cf.id] = { label: cf.field_label, hours: 0 };
     });
 
+    // Batch fetch custom field values (fixes N+1 query)
+    const flightIds = flights.map(f => f.id);
+    const allCustomFieldValues = customFields.length > 0 ? batchFetchCustomFieldValues(flightIds) : {};
+
     flights.forEach(flight => {
       const isSimulator = flight.aircraft_category === 'Simulator';
       const isPrimeEntry = flight.flight_details && flight.flight_details.includes('LOGBOOK PRIME ENTRY');
@@ -671,53 +690,46 @@ router.get('/export/summary', (req, res) => {
       }
 
       // Custom field values (applies to ALL flights including simulator)
-      if (customFields.length > 0) {
-        const customFieldValues = db.prepare(`
-          SELECT field_id, value
-          FROM custom_field_values
-          WHERE flight_id = ?
-        `).all(flight.id);
-
-        customFieldValues.forEach(cfv => {
-          if (totals.customFields[cfv.field_id]) {
-            totals.customFields[cfv.field_id].hours += cfv.value || 0;
-          }
-        });
-      }
+      const customFieldValues = allCustomFieldValues[flight.id] || {};
+      Object.keys(customFieldValues).forEach(fieldId => {
+        if (totals.customFields[fieldId]) {
+          totals.customFields[fieldId].hours += customFieldValues[fieldId] || 0;
+        }
+      });
     });
 
-    // Round all hours to 2 decimal places
-    totals.totalHours = Math.round(totals.totalHours * 100) / 100;
-    totals.groundTimeHours = Math.round(totals.groundTimeHours * 100) / 100;
-    totals.dayPicHours = Math.round(totals.dayPicHours * 100) / 100;
-    totals.nightPicHours = Math.round(totals.nightPicHours * 100) / 100;
-    totals.dayDualHours = Math.round(totals.dayDualHours * 100) / 100;
-    totals.nightDualHours = Math.round(totals.nightDualHours * 100) / 100;
-    totals.daySicHours = Math.round(totals.daySicHours * 100) / 100;
-    totals.nightSicHours = Math.round(totals.nightSicHours * 100) / 100;
-    totals.dayCmndPracticeHours = Math.round(totals.dayCmndPracticeHours * 100) / 100;
-    totals.nightCmndPracticeHours = Math.round(totals.nightCmndPracticeHours * 100) / 100;
-    totals.totalPicHours = Math.round(totals.totalPicHours * 100) / 100;
-    totals.totalDualHours = Math.round(totals.totalDualHours * 100) / 100;
-    totals.totalSicHours = Math.round(totals.totalSicHours * 100) / 100;
-    totals.totalCmndPracticeHours = Math.round(totals.totalCmndPracticeHours * 100) / 100;
-    totals.totalDayHours = Math.round(totals.totalDayHours * 100) / 100;
-    totals.totalNightHours = Math.round(totals.totalNightHours * 100) / 100;
+    // Round all hours to 2 decimal places using helper
+    totals.totalHours = roundHours(totals.totalHours);
+    totals.groundTimeHours = roundHours(totals.groundTimeHours);
+    totals.dayPicHours = roundHours(totals.dayPicHours);
+    totals.nightPicHours = roundHours(totals.nightPicHours);
+    totals.dayDualHours = roundHours(totals.dayDualHours);
+    totals.nightDualHours = roundHours(totals.nightDualHours);
+    totals.daySicHours = roundHours(totals.daySicHours);
+    totals.nightSicHours = roundHours(totals.nightSicHours);
+    totals.dayCmndPracticeHours = roundHours(totals.dayCmndPracticeHours);
+    totals.nightCmndPracticeHours = roundHours(totals.nightCmndPracticeHours);
+    totals.totalPicHours = roundHours(totals.totalPicHours);
+    totals.totalDualHours = roundHours(totals.totalDualHours);
+    totals.totalSicHours = roundHours(totals.totalSicHours);
+    totals.totalCmndPracticeHours = roundHours(totals.totalCmndPracticeHours);
+    totals.totalDayHours = roundHours(totals.totalDayHours);
+    totals.totalNightHours = roundHours(totals.totalNightHours);
 
     // Round hours in breakdowns
     Object.keys(totals.byAircraftCategory).forEach(key => {
-      totals.byAircraftCategory[key].hours = Math.round(totals.byAircraftCategory[key].hours * 100) / 100;
+      totals.byAircraftCategory[key].hours = roundHours(totals.byAircraftCategory[key].hours);
     });
     Object.keys(totals.byEngineType).forEach(key => {
-      totals.byEngineType[key].hours = Math.round(totals.byEngineType[key].hours * 100) / 100;
+      totals.byEngineType[key].hours = roundHours(totals.byEngineType[key].hours);
     });
     Object.keys(totals.byAircraftType).forEach(key => {
-      totals.byAircraftType[key].hours = Math.round(totals.byAircraftType[key].hours * 100) / 100;
+      totals.byAircraftType[key].hours = roundHours(totals.byAircraftType[key].hours);
     });
 
     // Round custom field hours
     Object.keys(totals.customFields).forEach(key => {
-      totals.customFields[key].hours = Math.round(totals.customFields[key].hours * 100) / 100;
+      totals.customFields[key].hours = roundHours(totals.customFields[key].hours);
     });
 
     // Format as text report

@@ -212,6 +212,11 @@ function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_flights_aircraft ON flights(aircraft_type)
   `);
 
+  // Create composite index for user_id + date (most common query pattern)
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_flights_user_date ON flights(user_id, date DESC)
+  `);
+
   // Check if default user exists
   const userCheck = db.prepare('SELECT COUNT(*) as count FROM users').get();
 

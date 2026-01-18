@@ -1,4 +1,5 @@
 // Settings page functionality (Aircraft + Custom Fields + Tags)
+// Note: checkAuth, setupNavigation, logout, escapeHtml, formatDate, loadAircraftTypes are provided by common.js
 
 let aircraftToDelete = null;
 let customFieldToDelete = null;
@@ -18,59 +19,20 @@ document.addEventListener('DOMContentLoaded', () => {
     setupForms();
 
     // Load data
-    loadAircraft();
+    loadAircraftList();
     loadCustomFields();
     loadTags();
 
-    // Load aircraft for prime logbook form
-    loadPrimeAircraftTypes();
+    // Load aircraft for prime logbook form using common.js helper
+    const primeAircraftSelect = document.getElementById('primeAircraftType');
+    loadAircraftTypes(primeAircraftSelect).then(() => {
+        // Load custom fields for prime form after aircraft loads
+        loadPrimeCustomFields();
+    });
 
     // Set up prime logbook real-time calculation
     setupPrimeBreakdownCalculation();
 });
-
-async function checkAuth() {
-    try {
-        const response = await fetch('/api/auth/me');
-        if (!response.ok) {
-            window.location.href = '/login.html';
-        }
-    } catch (error) {
-        console.error('Auth check error:', error);
-        window.location.href = '/login.html';
-    }
-}
-
-function setupNavigation() {
-    // Mobile navigation toggle
-    const navToggle = document.getElementById('navToggle');
-    const navMenu = document.getElementById('navMenu');
-
-    if (navToggle) {
-        navToggle.addEventListener('click', () => {
-            navMenu.classList.toggle('show');
-        });
-    }
-
-    // Logout button
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await logout();
-        });
-    }
-}
-
-async function logout() {
-    try {
-        await fetch('/api/auth/logout', { method: 'POST' });
-        window.location.href = '/login.html';
-    } catch (error) {
-        console.error('Logout error:', error);
-        window.location.href = '/login.html';
-    }
-}
 
 function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
@@ -142,7 +104,7 @@ function setupForms() {
 
 // ==================== AIRCRAFT MANAGEMENT ====================
 
-async function loadAircraft() {
+async function loadAircraftList() {
     const loading = document.getElementById('aircraftLoading');
     const errorAlert = document.getElementById('errorAlert');
     const aircraftContainer = document.getElementById('aircraftContainer');
@@ -243,7 +205,7 @@ async function addAircraft() {
             aircraftNameInput.value = '';
 
             // Reload aircraft list
-            await loadAircraft();
+            await loadAircraftList();
 
             // Hide success message after 3 seconds
             setTimeout(() => {
@@ -319,7 +281,7 @@ async function deleteAircraft() {
         }, 3000);
 
         // Reload aircraft list
-        await loadAircraft();
+        await loadAircraftList();
 
     } catch (error) {
         console.error('Delete error:', error);
@@ -726,30 +688,7 @@ async function deleteTag() {
 }
 
 // ==================== PRIME LOGBOOK ====================
-
-async function loadPrimeAircraftTypes() {
-    const select = document.getElementById('primeAircraftType');
-
-    try {
-        const response = await fetch('/api/aircraft');
-        const aircraft = response.ok ? await response.json() : [];
-        const aircraftNames = aircraft.map(a => a.name);
-        aircraftNames.sort();
-
-        select.innerHTML = '<option value="">Select aircraft type</option>';
-        aircraftNames.forEach(name => {
-            const option = document.createElement('option');
-            option.value = name;
-            option.textContent = name;
-            select.appendChild(option);
-        });
-
-        // Load custom fields for prime form
-        await loadPrimeCustomFields();
-    } catch (error) {
-        console.error('Error loading aircraft types for prime form:', error);
-    }
-}
+// loadAircraftTypes for prime logbook is now handled by common.js helper in DOMContentLoaded
 
 async function loadPrimeCustomFields() {
     try {
@@ -945,25 +884,7 @@ function calculatePrimeTotal() {
 }
 
 // ==================== UTILITY FUNCTIONS ====================
-
-function formatDate(dateString) {
-    if (!dateString) return 'Unknown';
-    // Handle both YYYY-MM-DD and full datetime formats
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Unknown';
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// formatDate, escapeHtml are provided by common.js
 
 // Make delete functions available globally for onclick handlers
 window.confirmDeleteAircraft = confirmDeleteAircraft;

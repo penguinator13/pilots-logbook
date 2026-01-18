@@ -1,10 +1,5 @@
 // Flight form functionality (for both add and edit)
-
-// Get today's date in YYYY-MM-DD format using local timezone
-function getLocalDateString() {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
+// Note: checkAuth, setupNavigation, logout, escapeHtml, getLocalDateString, loadAircraftTypes are provided by common.js
 
 let isEditMode = false;
 let isDuplicateMode = false;
@@ -18,8 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up navigation
     setupNavigation();
 
-    // Load aircraft types
-    loadAircraftTypes();
+    // Load aircraft types using common.js helper
+    const aircraftSelect = document.getElementById('aircraft_type');
+    loadAircraftTypes(aircraftSelect);
 
     // Load custom fields
     loadCustomFields();
@@ -48,78 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up form
     setupForm();
 });
-
-async function checkAuth() {
-    try {
-        const response = await fetch('/api/auth/me');
-        if (!response.ok) {
-            window.location.href = '/login.html';
-        }
-    } catch (error) {
-        console.error('Auth check error:', error);
-        window.location.href = '/login.html';
-    }
-}
-
-function setupNavigation() {
-    // Mobile navigation toggle
-    const navToggle = document.getElementById('navToggle');
-    const navMenu = document.getElementById('navMenu');
-
-    if (navToggle) {
-        navToggle.addEventListener('click', () => {
-            navMenu.classList.toggle('show');
-        });
-    }
-
-    // Logout button
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await logout();
-        });
-    }
-}
-
-async function logout() {
-    try {
-        await fetch('/api/auth/logout', { method: 'POST' });
-        window.location.href = '/login.html';
-    } catch (error) {
-        console.error('Logout error:', error);
-        window.location.href = '/login.html';
-    }
-}
-
-async function loadAircraftTypes() {
-    const select = document.getElementById('aircraft_type');
-
-    try {
-        // Fetch aircraft from API
-        const response = await fetch('/api/aircraft');
-        const aircraft = response.ok ? await response.json() : [];
-        const aircraftNames = aircraft.map(a => a.name);
-
-        // Sort alphabetically
-        aircraftNames.sort();
-
-        // Clear existing options except the placeholder
-        select.innerHTML = '<option value="">Select aircraft type</option>';
-
-        // Add all aircraft
-        aircraftNames.forEach(name => {
-            const option = document.createElement('option');
-            option.value = name;
-            option.textContent = name;
-            select.appendChild(option);
-        });
-    } catch (error) {
-        console.error('Error loading aircraft types:', error);
-        // Show empty dropdown with placeholder
-        select.innerHTML = '<option value="">Select aircraft type</option>';
-    }
-}
 
 async function loadCustomFields() {
     try {
@@ -173,11 +97,7 @@ function renderCustomFields() {
     container.innerHTML = html;
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml is provided by common.js
 
 async function loadTags() {
     try {

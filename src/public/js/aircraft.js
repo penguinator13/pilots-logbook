@@ -1,4 +1,5 @@
 // Aircraft management functionality
+// Note: checkAuth, setupNavigation, logout, escapeHtml, formatDate are provided by common.js
 
 let aircraftToDelete = null;
 
@@ -15,49 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load aircraft
     loadAircraft();
 });
-
-async function checkAuth() {
-    try {
-        const response = await fetch('/api/auth/me');
-        if (!response.ok) {
-            window.location.href = '/login.html';
-        }
-    } catch (error) {
-        console.error('Auth check error:', error);
-        window.location.href = '/login.html';
-    }
-}
-
-function setupNavigation() {
-    // Mobile navigation toggle
-    const navToggle = document.getElementById('navToggle');
-    const navMenu = document.getElementById('navMenu');
-
-    if (navToggle) {
-        navToggle.addEventListener('click', () => {
-            navMenu.classList.toggle('show');
-        });
-    }
-
-    // Logout button
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await logout();
-        });
-    }
-}
-
-async function logout() {
-    try {
-        await fetch('/api/auth/logout', { method: 'POST' });
-        window.location.href = '/login.html';
-    } catch (error) {
-        console.error('Logout error:', error);
-        window.location.href = '/login.html';
-    }
-}
 
 function setupForm() {
     const form = document.getElementById('addAircraftForm');
@@ -259,21 +217,4 @@ async function deleteAircraft() {
     }
 }
 
-// Utility functions
-function formatDate(dateString) {
-    // Parse as local date to avoid timezone shift (dateString is YYYY-MM-DD)
-    const [year, month, day] = dateString.split('-');
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// Utility functions (formatDate, escapeHtml) are provided by common.js

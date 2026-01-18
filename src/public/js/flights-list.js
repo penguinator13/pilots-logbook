@@ -1,4 +1,5 @@
 // Flights list functionality
+// Note: checkAuth, setupNavigation, logout, escapeHtml, formatDate, truncate, downloadBlob are provided by common.js
 
 let currentPage = 1;
 let totalPages = 1;
@@ -12,8 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set up navigation
     setupNavigation();
 
-    // Load aircraft types for filter
-    loadAircraftTypes();
+    // Load aircraft types for filter (custom version to preserve "All Aircraft" option)
+    loadAircraftTypesForFilter();
 
     // Set up filters
     setupFilters();
@@ -28,50 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFlights();
 });
 
-async function checkAuth() {
-    try {
-        const response = await fetch('/api/auth/me');
-        if (!response.ok) {
-            window.location.href = '/login.html';
-        }
-    } catch (error) {
-        console.error('Auth check error:', error);
-        window.location.href = '/login.html';
-    }
-}
-
-function setupNavigation() {
-    // Mobile navigation toggle
-    const navToggle = document.getElementById('navToggle');
-    const navMenu = document.getElementById('navMenu');
-
-    if (navToggle) {
-        navToggle.addEventListener('click', () => {
-            navMenu.classList.toggle('show');
-        });
-    }
-
-    // Logout button
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await logout();
-        });
-    }
-}
-
-async function logout() {
-    try {
-        await fetch('/api/auth/logout', { method: 'POST' });
-        window.location.href = '/login.html';
-    } catch (error) {
-        console.error('Logout error:', error);
-        window.location.href = '/login.html';
-    }
-}
-
-async function loadAircraftTypes() {
+async function loadAircraftTypesForFilter() {
     const select = document.getElementById('aircraftFilter');
 
     try {
@@ -141,14 +99,7 @@ function setupExport() {
             }
 
             const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `flights_${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(downloadUrl);
+            downloadBlob(blob, `flights_${new Date().toISOString().split('T')[0]}.csv`);
 
             exportBtn.disabled = false;
             exportBtn.textContent = 'Export to CSV';
@@ -173,14 +124,7 @@ function setupExport() {
             }
 
             const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `logbook-summary_${new Date().toISOString().split('T')[0]}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            window.URL.revokeObjectURL(downloadUrl);
+            downloadBlob(blob, `logbook-summary_${new Date().toISOString().split('T')[0]}.txt`);
 
             exportSummaryBtn.disabled = false;
             exportSummaryBtn.textContent = 'Export Summary';
@@ -297,14 +241,7 @@ async function exportToPdf(fieldIds) {
         }
 
         const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = `logbook_${new Date().toISOString().split('T')[0]}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(downloadUrl);
+        downloadBlob(blob, `logbook_${new Date().toISOString().split('T')[0]}.pdf`);
 
         exportPdfBtn.disabled = false;
         exportPdfBtn.textContent = 'Export to PDF';
@@ -475,26 +412,4 @@ async function deleteFlight() {
     }
 }
 
-// Utility functions
-function formatDate(dateString) {
-    // Parse as local date to avoid timezone shift (dateString is YYYY-MM-DD)
-    const [year, month, day] = dateString.split('-');
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function truncate(text, maxLength) {
-    if (!text || text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-}
+// Utility functions (formatDate, escapeHtml, truncate, downloadBlob) are provided by common.js
