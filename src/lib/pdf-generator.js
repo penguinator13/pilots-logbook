@@ -120,6 +120,8 @@ class LogbookPDFGenerator {
       instrument_actual: 0,
       instrument_simulated: 0,
       instrument_ground: 0,
+      // Simulator time (for SIM column)
+      simulator_time: 0,
       // Category totals
       helicopter_total: 0,
       aeroplane_total: 0,
@@ -169,6 +171,11 @@ class LogbookPDFGenerator {
       totals.instrument_actual += flight.instrument_hours || 0;
       totals.instrument_simulated += flight.simulated_instrument_hours || 0;
       totals.instrument_ground += flight.ground_instrument_hours || 0;
+
+      // Simulator time (for SIM column - only populated for simulator flights)
+      if (flight.aircraft_category === 'Simulator') {
+        totals.simulator_time += flight.flight_time_hours || 0;
+      }
 
       // Category totals
       if (flight.aircraft_category === 'Helicopter') {
@@ -407,7 +414,7 @@ class LogbookPDFGenerator {
     let y = this.marginTop;
 
     // Calculate column positions
-    const numFixedCols = 15;
+    const numFixedCols = 16;  // 15 original + 1 SIM column
     const numCustomCols = this.customFields.length;
     const totalCols = numFixedCols + numCustomCols;
     const colWidth = Math.min(this.pageBColumnWidth, contentWidth / totalCols);
@@ -428,6 +435,10 @@ class LogbookPDFGenerator {
     // INSTRUMENT header (cols 13-15)
     doc.text('INSTRUMENT', x, y, { width: colWidth * 3, align: 'center' });
     x += colWidth * 3;
+
+    // SIM header (col 16)
+    doc.text('SIM', x, y, { width: colWidth, align: 'center' });
+    x += colWidth;
 
     // OTHER header (custom fields)
     if (numCustomCols > 0) {
@@ -498,6 +509,10 @@ class LogbookPDFGenerator {
     doc.text('SIMULATED', x, y, { width: colWidth, align: 'center' });
     x += colWidth;
     doc.text('GROUND', x, y, { width: colWidth, align: 'center' });
+    x += colWidth;
+
+    // SIM column (col 16)
+    doc.text('TIME', x, y, { width: colWidth, align: 'center' });
     x += colWidth;
 
     // Custom field columns
@@ -586,8 +601,8 @@ class LogbookPDFGenerator {
 
       // Determine how high this vertical line should extend based on column position
       let startY;
-      if (i === 0 || i === 4 || i === 12 || i === 15 || i === totalCols) {
-        // Major section dividers (left edge, after SE, after ME, after Instrument, right edge)
+      if (i === 0 || i === 4 || i === 12 || i === 15 || i === 16 || i === totalCols) {
+        // Major section dividers (left edge, after SE, after ME, after Instrument, after SIM, right edge)
         startY = headerRow1Y + 10;  // Just below section header text
       } else if (i === 2 || i === 8) {
         // Day/Night sub-section dividers (within SE: col 2, within ME: col 8)
@@ -648,7 +663,12 @@ class LogbookPDFGenerator {
       doc.text(this.formatHoursCell(flight.ground_instrument_hours), x, textY, { width: colWidth, align: 'center' });
       x += colWidth;
 
-      // Custom field columns (16+)
+      // SIM column (16) - only shows hours for simulator flights
+      const isSimulator = flight.aircraft_category === 'Simulator';
+      doc.text(isSimulator ? this.formatHoursCell(flight.flight_time_hours) : '', x, textY, { width: colWidth, align: 'center' });
+      x += colWidth;
+
+      // Custom field columns (17+)
       this.customFields.forEach(cf => {
         const value = flight.customFieldValues?.[cf.id] || 0;
         doc.text(this.formatHoursCell(value), x, textY, { width: colWidth, align: 'center' });
@@ -679,7 +699,8 @@ class LogbookPDFGenerator {
       cumulativeTotals.me_night_dual, cumulativeTotals.me_night_pic,
       cumulativeTotals.me_night_copilot, cumulativeTotals.me_night_cmnd,
       cumulativeTotals.instrument_actual, cumulativeTotals.instrument_simulated,
-      cumulativeTotals.instrument_ground
+      cumulativeTotals.instrument_ground,
+      cumulativeTotals.simulator_time  // SIM column (16)
     ];
 
     // Add custom field totals
