@@ -41,6 +41,11 @@ async function loadDashboard() {
         displayAircraftBreakdown(stats.byAircraft);
         displayRecentFlights(flightsData.flights);
 
+        // Initialize charts
+        createHoursOverTimeChart(stats.cumulativeHours);
+        createAircraftChart(stats.byAircraft);
+        createMonthlyActivityChart(stats.monthlyActivity);
+
     } catch (error) {
         console.error('Dashboard load error:', error);
         loading.classList.add('hidden');
@@ -121,3 +126,278 @@ function displayRecentFlights(flights) {
 }
 
 // Utility functions (formatDate, escapeHtml, truncate) are provided by common.js
+
+// ==================== CHART FUNCTIONS ====================
+
+/**
+ * Get theme-aware colors for charts
+ */
+function getChartColors() {
+    const style = getComputedStyle(document.documentElement);
+    return {
+        primary: style.getPropertyValue('--primary-color').trim() || '#2563eb',
+        text: style.getPropertyValue('--text-secondary').trim() || '#64748b',
+        textMuted: style.getPropertyValue('--text-muted').trim() || '#94a3b8',
+        border: style.getPropertyValue('--border').trim() || '#e2e8f0',
+        surface: style.getPropertyValue('--surface').trim() || '#ffffff'
+    };
+}
+
+/**
+ * Generate color palette for charts
+ */
+function generateChartPalette(count) {
+    const baseColors = [
+        '#2563eb', // blue
+        '#16a34a', // green
+        '#dc2626', // red
+        '#f59e0b', // amber
+        '#8b5cf6', // purple
+        '#06b6d4', // cyan
+        '#ec4899', // pink
+        '#84cc16', // lime
+        '#f97316', // orange
+        '#6366f1'  // indigo
+    ];
+    const colors = [];
+    for (let i = 0; i < count; i++) {
+        colors.push(baseColors[i % baseColors.length]);
+    }
+    return colors;
+}
+
+/**
+ * Create cumulative hours over time line chart
+ */
+function createHoursOverTimeChart(data) {
+    const canvas = document.getElementById('hoursOverTimeChart');
+    if (!canvas) return;
+
+    if (!data || data.length === 0) {
+        canvas.parentElement.innerHTML = '<h3>Hours Over Time</h3><div class="chart-empty">No flight data available</div>';
+        return;
+    }
+
+    const colors = getChartColors();
+    const labels = data.map(d => {
+        const [year, month] = d.month.split('-');
+        return new Date(year, month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    });
+    const values = data.map(d => d.totalHours);
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Total Hours',
+                data: values,
+                borderColor: colors.primary,
+                backgroundColor: colors.primary + '20',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `${ctx.parsed.y.toFixed(1)} hours`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: colors.border
+                    },
+                    ticks: {
+                        color: colors.text
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: colors.border
+                    },
+                    ticks: {
+                        color: colors.text,
+                        callback: (val) => val + ' hrs'
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Create aircraft hours doughnut chart
+ */
+function createAircraftChart(data) {
+    const canvas = document.getElementById('aircraftChart');
+    if (!canvas) return;
+
+    // Filter out simulator entries and zero-hour aircraft
+    const filteredData = (data || []).filter(d => d.aircraft_category !== 'Simulator' && d.hours > 0);
+
+    if (filteredData.length === 0) {
+        canvas.parentElement.innerHTML = '<h3>Hours by Aircraft</h3><div class="chart-empty">No flight data available</div>';
+        return;
+    }
+
+    const colors = getChartColors();
+    const palette = generateChartPalette(filteredData.length);
+    const labels = filteredData.map(d => d.aircraft_type);
+    const values = filteredData.map(d => d.hours);
+
+    new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: palette,
+                borderColor: colors.surface,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        color: colors.text,
+                        padding: 12,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                            return `${ctx.label}: ${ctx.parsed.toFixed(1)} hrs (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Create monthly activity bar chart
+ */
+function createMonthlyActivityChart(data) {
+    const canvas = document.getElementById('monthlyChart');
+    if (!canvas) return;
+
+    if (!data || data.length === 0) {
+        canvas.parentElement.innerHTML = '<h3>Monthly Activity</h3><div class="chart-empty">No flight data available</div>';
+        return;
+    }
+
+    const colors = getChartColors();
+    const labels = data.map(d => {
+        const [year, month] = d.month.split('-');
+        return new Date(year, month - 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    });
+    const hoursData = data.map(d => d.hours);
+    const flightsData = data.map(d => d.flights);
+
+    new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Hours',
+                data: hoursData,
+                backgroundColor: colors.primary + 'cc',
+                borderColor: colors.primary,
+                borderWidth: 1,
+                yAxisID: 'y'
+            }, {
+                label: 'Flights',
+                data: flightsData,
+                backgroundColor: '#16a34a' + 'cc',
+                borderColor: '#16a34a',
+                borderWidth: 1,
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: colors.text
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            if (ctx.datasetIndex === 0) {
+                                return `Hours: ${ctx.parsed.y.toFixed(1)}`;
+                            }
+                            return `Flights: ${ctx.parsed.y}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: colors.border
+                    },
+                    ticks: {
+                        color: colors.text
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    position: 'left',
+                    beginAtZero: true,
+                    grid: {
+                        color: colors.border
+                    },
+                    ticks: {
+                        color: colors.text,
+                        callback: (val) => val + ' hrs'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Hours',
+                        color: colors.text
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    position: 'right',
+                    beginAtZero: true,
+                    grid: {
+                        drawOnChartArea: false
+                    },
+                    ticks: {
+                        color: colors.text,
+                        stepSize: 1
+                    },
+                    title: {
+                        display: true,
+                        text: 'Flights',
+                        color: colors.text
+                    }
+                }
+            }
+        }
+    });
+}

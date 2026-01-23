@@ -919,6 +919,70 @@ body {
 }
 
 /* ===================================
+   DASHBOARD CHARTS
+   =================================== */
+
+.charts-section {
+    margin-top: 2rem;
+}
+
+.charts-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.chart-card h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.chart-card canvas {
+    max-height: 280px;
+}
+
+.chart-wide {
+    margin-bottom: 1.5rem;
+}
+
+.chart-wide canvas {
+    max-height: 200px;
+}
+
+.chart-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .charts-row {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-card canvas {
+        max-height: 220px;
+    }
+
+    .chart-wide canvas {
+        max-height: 180px;
+    }
+}
+
+/* ===================================
    PRINT STYLES
    =================================== */
 

@@ -214,6 +214,36 @@ router.get('/stats/summary', (req, res) => {
       FROM flights WHERE user_id = ? ORDER BY date DESC, id DESC LIMIT 10
     `).all(req.session.userId);
 
+    // Monthly activity (last 12 months, for bar chart)
+    const monthlyActivity = db.prepare(`
+      SELECT strftime('%Y-%m', date) as month,
+             COUNT(*) as flights,
+             COALESCE(SUM(flight_time_hours), 0) as hours
+      FROM flights
+      WHERE user_id = ? AND aircraft_category != 'Simulator'
+        AND (flight_details IS NULL OR flight_details NOT LIKE '%LOGBOOK PRIME ENTRY%')
+      GROUP BY strftime('%Y-%m', date)
+      ORDER BY month DESC
+      LIMIT 12
+    `).all(req.session.userId).reverse();
+
+    // Cumulative hours by month (for line chart)
+    const monthlyHours = db.prepare(`
+      SELECT strftime('%Y-%m', date) as month,
+             COALESCE(SUM(flight_time_hours), 0) as hours
+      FROM flights
+      WHERE user_id = ? AND aircraft_category != 'Simulator'
+      GROUP BY strftime('%Y-%m', date)
+      ORDER BY month ASC
+    `).all(req.session.userId);
+
+    // Calculate cumulative totals
+    let runningTotal = 0;
+    const cumulativeHours = monthlyHours.map(item => {
+      runningTotal += item.hours;
+      return { month: item.month, totalHours: runningTotal };
+    });
+
     res.json({
       totalHours: totalHours.total,
       groundTimeHours: groundTimeHours.total,
@@ -223,7 +253,9 @@ router.get('/stats/summary', (req, res) => {
       totalPicHours: dualPicHours.pic,
       totalFlights: totalFlights.count,
       byAircraft: hoursByAircraft,
-      flights: recentFlights
+      flights: recentFlights,
+      monthlyActivity: monthlyActivity,
+      cumulativeHours: cumulativeHours
     });
   } catch (error) {
     console.error('Error fetching statistics:', error);
