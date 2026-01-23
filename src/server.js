@@ -2,6 +2,8 @@ const express = require('express');
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const compression = require('compression');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 // Import routes
@@ -15,22 +17,86 @@ const { requireAuth } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const SESSION_SECRET = process.env.SESSION_SECRET || 'change-this-secret-in-production';
+const SESSION_SECRET = process.env.SESSION_SECRET;
+const isProduction = process.env.NODE_ENV === 'production';
+const trustProxy = process.env.TRUST_PROXY === 'true';
+
+// Require SESSION_SECRET in production
+if (!SESSION_SECRET) {
+  if (isProduction) {
+    console.error('FATAL: SESSION_SECRET environment variable is required in production');
+    process.exit(1);
+  } else {
+    console.warn('WARNING: Using default SESSION_SECRET. Set SESSION_SECRET env var for production.');
+  }
+}
+
+// Trust reverse proxy (nginx, cloudflare tunnel)
+if (trustProxy) {
+  app.set('trust proxy', 1);
+}
 
 // Middleware
 app.use(compression()); // Gzip compression for all responses
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+
+// Serve static files BEFORE helmet (no security headers needed for static assets)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Security headers (applied to API routes only, not static files)
+// Only apply helmet to /api routes to avoid breaking static file serving
+app.use('/api', helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"]
+    }
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: false
+}));
+
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' }
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 login attempts per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please try again later' },
+  skipSuccessfulRequests: true
+});
+
+app.use('/api/', apiLimiter);
+app.use('/api/auth/login', loginLimiter);
+
+app.use(bodyParser.json({ limit: '1mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '1mb' }));
 
 // Session configuration
 app.use(session({
-  secret: SESSION_SECRET,
+  secret: SESSION_SECRET || 'change-this-secret-in-development',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true if using HTTPS
+    secure: isProduction && trustProxy,
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax'
   }
 }));
 
@@ -41,9 +107,6 @@ app.use('/api/flights', flightRoutes);
 app.use('/api/aircraft', aircraftRoutes);
 app.use('/api/custom-fields', customFieldsRoutes);
 app.use('/api/tags', tagsRoutes);
-
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Protected routes - serve HTML files only if authenticated
 app.get('/', requireAuth, (req, res) => {

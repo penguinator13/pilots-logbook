@@ -21,6 +21,9 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:-change-this-to-a-random-string-in-production}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+
+      # Reverse proxy support (set to true when behind nginx/cloudflare tunnel)
+      TRUST_PROXY: ${TRUST_PROXY:-true}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:${PORT:-3000}/api/auth/me', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s

@@ -4,7 +4,8 @@ function requireAuth(req, res, next) {
   }
 
   // For API requests, return JSON error
-  if (req.path.startsWith('/api/')) {
+  // Use originalUrl instead of path since path is relative to the router mount point
+  if (req.originalUrl.startsWith('/api/')) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

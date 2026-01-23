@@ -411,6 +411,11 @@ async function submitForm() {
             } else if (isDuplicateMode) {
                 successMessage = 'Flight duplicated successfully!';
             }
+
+            // Show toast notification
+            showToast(successMessage, 'success');
+
+            // Also show inline alert
             successAlert.textContent = successMessage;
             successAlert.classList.remove('hidden');
 

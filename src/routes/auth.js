@@ -24,10 +24,16 @@ router.post('/login', (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    req.session.userId = user.id;
-    req.session.username = user.username;
-
-    res.json({ success: true, username: user.username });
+    // Regenerate session on login to prevent session fixation attacks
+    req.session.regenerate((err) => {
+      if (err) {
+        console.error('Session regeneration error:', err);
+        return res.status(500).json({ error: 'Login failed' });
+      }
+      req.session.userId = user.id;
+      req.session.username = user.username;
+      res.json({ success: true, username: user.username });
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Server error during login' });

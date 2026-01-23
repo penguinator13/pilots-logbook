@@ -101,11 +101,12 @@ function setupExport() {
             const blob = await response.blob();
             downloadBlob(blob, `flights_${new Date().toISOString().split('T')[0]}.csv`);
 
+            showToast('CSV exported successfully', 'success');
             exportBtn.disabled = false;
             exportBtn.textContent = 'Export to CSV';
         } catch (error) {
             console.error('Export error:', error);
-            alert('Failed to export flights');
+            showToast('Failed to export flights', 'error');
             exportBtn.disabled = false;
             exportBtn.textContent = 'Export to CSV';
         }
@@ -126,11 +127,12 @@ function setupExport() {
             const blob = await response.blob();
             downloadBlob(blob, `logbook-summary_${new Date().toISOString().split('T')[0]}.txt`);
 
+            showToast('Summary exported successfully', 'success');
             exportSummaryBtn.disabled = false;
             exportSummaryBtn.textContent = 'Export Summary';
         } catch (error) {
             console.error('Summary export error:', error);
-            alert('Failed to export summary');
+            showToast('Failed to export summary', 'error');
             exportSummaryBtn.disabled = false;
             exportSummaryBtn.textContent = 'Export Summary';
         }
@@ -243,11 +245,12 @@ async function exportToPdf(fieldIds) {
         const blob = await response.blob();
         downloadBlob(blob, `logbook_${new Date().toISOString().split('T')[0]}.pdf`);
 
+        showToast('PDF exported successfully', 'success');
         exportPdfBtn.disabled = false;
         exportPdfBtn.textContent = 'Export to PDF';
     } catch (error) {
         console.error('PDF export error:', error);
-        alert('Failed to export PDF: ' + error.message);
+        showToast('Failed to export PDF: ' + error.message, 'error');
         exportPdfBtn.disabled = false;
         exportPdfBtn.textContent = 'Export to PDF';
     }
@@ -387,6 +390,9 @@ async function deleteFlight() {
 
         // Close modal
         closeDeleteModal();
+
+        // Show toast notification
+        showToast('Flight deleted successfully', 'success');
 
         // Show success message
         successAlert.textContent = 'Flight deleted successfully';

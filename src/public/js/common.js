@@ -66,22 +66,28 @@ function escapeHtml(text) {
 
 /**
  * Format a date string for display
- * @param {string} dateString - Date string in YYYY-MM-DD format
+ * @param {string} dateString - Date string in YYYY-MM-DD or YYYY-MM-DD HH:MM:SS format
  * @returns {string} Formatted date string
  */
 function formatDate(dateString) {
     if (!dateString) return 'Unknown';
-    // Parse as local date to avoid timezone shift (dateString is YYYY-MM-DD)
-    const parts = dateString.split('-');
-    if (parts.length === 3) {
-        const date = new Date(parts[0], parts[1] - 1, parts[2]);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
+    // Extract just the date portion (handles both YYYY-MM-DD and YYYY-MM-DD HH:MM:SS)
+    const datePart = dateString.split(' ')[0];
+    const parts = datePart.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+            const date = new Date(year, month, day);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
     }
-    // Handle full datetime formats
+    // Handle other datetime formats
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Unknown';
     return date.toLocaleDateString('en-US', {
@@ -138,6 +144,37 @@ function showTemporaryAlert(alertElement, message, duration = 3000) {
     alertElement.classList.remove('hidden');
     setTimeout(() => {
         alertElement.classList.add('hidden');
+    }, duration);
+}
+
+/**
+ * Show a toast notification
+ * @param {string} message - The message to display
+ * @param {string} type - Type of toast: 'success', 'error', or 'warning' (default 'success')
+ * @param {number} duration - Duration in ms before auto-dismiss (default 3000)
+ */
+function showToast(message, type = 'success', duration = 3000) {
+    // Create container if it doesn't exist
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    // Remove after duration
+    setTimeout(() => {
+        toast.remove();
+        // Remove container if empty
+        if (container.children.length === 0) {
+            container.remove();
+        }
     }, duration);
 }
 
