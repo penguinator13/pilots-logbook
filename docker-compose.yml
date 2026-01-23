@@ -23,7 +23,7 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
 
       # Reverse proxy support (set to true when behind nginx/cloudflare tunnel)
-      TRUST_PROXY: ${TRUST_PROXY:-true}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:${PORT:-3000}/api/auth/me', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s

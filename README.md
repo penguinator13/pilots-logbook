@@ -110,6 +110,8 @@ All configuration is done through environment variables. Create a `.env` file (u
 | `DB_PATH` | Path to SQLite database (inside container) | `/app/data/logbook.db` |
 | `DATA_PATH` | Path to data directory on host | `./data` |
 | `CONTAINER_NAME` | Docker container name | `pilots-logbook` |
+| `TRUST_PROXY` | Enable secure cookies for reverse proxy | `false` |
+| `TZ` | Timezone for timestamps | `America/Vancouver` |
 
 ### Port Configuration
 
@@ -121,6 +123,87 @@ PORT=3000       # Internal container port (usually leave as 3000)
 ```
 
 Then restart: `docker-compose down && docker-compose up -d`
+
+## Reverse Proxy Configuration
+
+### Direct Access (Default)
+
+If you're accessing the application directly via HTTP (e.g., `http://localhost:3000` or `http://raspberry-pi:3000`), use the **default settings**:
+
+```bash
+# .env
+TRUST_PROXY=false
+```
+
+This is the correct configuration for:
+- Local development
+- Docker port mapping without reverse proxy
+- Raspberry Pi deployments
+- Direct LAN access
+
+### Behind Reverse Proxy (nginx, Cloudflare Tunnel, Traefik)
+
+If you're using a reverse proxy that terminates SSL/TLS (e.g., nginx with HTTPS, Cloudflare Tunnel), set:
+
+```bash
+# .env
+TRUST_PROXY=true
+```
+
+This enables secure session cookies that require HTTPS. Your reverse proxy configuration should:
+
+1. **Handle HTTPS termination** (SSL certificates)
+2. **Forward requests to container over HTTP** (proxy_pass to http://localhost:3000)
+3. **Set proxy headers** (X-Forwarded-Proto, X-Forwarded-For)
+
+#### Example nginx configuration:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name logbook.example.com;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+#### Example Cloudflare Tunnel configuration:
+
+```yaml
+tunnel: <your-tunnel-id>
+credentials-file: /path/to/credentials.json
+
+ingress:
+  - hostname: logbook.example.com
+    service: http://localhost:3000
+  - service: http_status:404
+```
+
+With Cloudflare Tunnel, set `TRUST_PROXY=true` in your `.env` file.
+
+### Troubleshooting: 401 Unauthorized Errors
+
+**Symptom:** After login, you're redirected to dashboard but immediately see 401 errors and can't access any data.
+
+**Cause:** `TRUST_PROXY=true` is set but you're accessing over HTTP (not through a reverse proxy).
+
+**Fix:**
+1. Set `TRUST_PROXY=false` in your `.env` file
+2. Restart the container: `docker-compose down && docker-compose up -d`
+
+**Why this happens:**
+- When `TRUST_PROXY=true` in production mode, session cookies are marked as "secure" (HTTPS-only)
+- Browsers refuse to send secure cookies over plain HTTP connections
+- Without the session cookie, the server treats you as unauthenticated → 401 errors
 
 ## Usage
 
