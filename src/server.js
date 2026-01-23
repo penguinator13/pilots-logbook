@@ -12,6 +12,7 @@ const flightRoutes = require('./routes/flights');
 const aircraftRoutes = require('./routes/aircraft');
 const customFieldsRoutes = require('./routes/custom-fields');
 const tagsRoutes = require('./routes/tags');
+const preferencesRoutes = require('./routes/preferences');
 const pdfExportRoutes = require('./routes/pdf-export');
 const { requireAuth } = require('./middleware/auth');
 
@@ -107,6 +108,7 @@ app.use('/api/flights', flightRoutes);
 app.use('/api/aircraft', aircraftRoutes);
 app.use('/api/custom-fields', customFieldsRoutes);
 app.use('/api/tags', tagsRoutes);
+app.use('/api/preferences', preferencesRoutes);
 
 // Protected routes - serve HTML files only if authenticated
 app.get('/', requireAuth, (req, res) => {

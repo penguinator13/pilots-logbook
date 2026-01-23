@@ -41,6 +41,7 @@
                 <button class="tab-button active" data-tab="aircraft">Aircraft Types</button>
                 <button class="tab-button" data-tab="tags">Tags</button>
                 <button class="tab-button" data-tab="custom-fields">Custom Fields</button>
+                <button class="tab-button" data-tab="dashboard">Dashboard</button>
                 <button class="tab-button" data-tab="prime-logbook">Prime Logbook</button>
             </div>
 
@@ -151,6 +152,48 @@
                         </div>
                         <div id="noCustomFields" class="text-center mt-3 hidden">
                             <p class="text-muted">No custom fields added yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div class="tab-content" id="dashboard-tab">
+                <div class="container-narrow">
+                    <div class="card">
+                        <h2 class="card-header">Dashboard Display Settings</h2>
+                        <p class="text-muted mb-3">Choose which charts and fields to display on your dashboard.</p>
+
+                        <!-- Loading Spinner -->
+                        <div id="dashboardSettingsLoading" class="spinner"></div>
+
+                        <div id="dashboardSettingsContent" class="hidden">
+                            <h3 style="margin-top: 0; margin-bottom: 1rem; font-size: 1rem; color: var(--text-secondary);">Charts</h3>
+                            <div class="toggle-group">
+                                <label class="toggle-item">
+                                    <input type="checkbox" id="showHoursOverTime" checked>
+                                    <span>Hours Over Time</span>
+                                </label>
+                                <label class="toggle-item">
+                                    <input type="checkbox" id="showAircraftChart" checked>
+                                    <span>Hours by Aircraft</span>
+                                </label>
+                                <label class="toggle-item">
+                                    <input type="checkbox" id="showMonthlyActivity" checked>
+                                    <span>Monthly Activity</span>
+                                </label>
+                            </div>
+
+                            <!-- Custom Fields Section (populated dynamically) -->
+                            <div id="customFieldTogglesSection" class="hidden">
+                                <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1rem; color: var(--text-secondary);">Custom Fields on Dashboard</h3>
+                                <p class="text-muted mb-2" style="font-size: 0.875rem;">Toggle visibility of custom experience fields in the aircraft breakdown.</p>
+                                <div id="customFieldToggles" class="toggle-group">
+                                    <!-- Populated dynamically based on user's custom fields -->
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary mt-3" id="saveDashboardSettings">Save Settings</button>
                         </div>
                     </div>
                 </div>
@@ -549,6 +592,40 @@
         .btn-group-inline .btn {
             padding: 0.375rem 0.75rem;
             font-size: 0.875rem;
+        }
+
+        .toggle-group {
+            margin: 0.5rem 0;
+        }
+
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+
+        .toggle-item:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .toggle-item:last-child {
+            border-bottom: none;
+        }
+
+        .toggle-item input[type="checkbox"] {
+            width: 1.25rem;
+            height: 1.25rem;
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .toggle-item span {
+            font-weight: 500;
+            color: var(--text-primary);
         }
     </style>
 

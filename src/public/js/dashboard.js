@@ -18,19 +18,30 @@ async function loadDashboard() {
     const statsContainer = document.getElementById('statsContainer');
 
     try {
-        // Fetch summary stats
-        const statsResponse = await fetch('/api/flights/stats/summary');
+        // Fetch summary stats, recent flights, and preferences in parallel
+        const [statsResponse, flightsResponse, prefsResponse] = await Promise.all([
+            fetch('/api/flights/stats/summary'),
+            fetch('/api/flights?limit=10'),
+            fetch('/api/preferences')
+        ]);
+
         if (!statsResponse.ok) {
             throw new Error('Failed to load statistics');
         }
         const stats = await statsResponse.json();
 
-        // Fetch recent flights
-        const flightsResponse = await fetch('/api/flights?limit=10');
         if (!flightsResponse.ok) {
             throw new Error('Failed to load recent flights');
         }
         const flightsData = await flightsResponse.json();
+
+        // Get preferences (default to all visible if fetch fails)
+        const prefs = prefsResponse.ok ? await prefsResponse.json() : {
+            showHoursOverTime: true,
+            showAircraftChart: true,
+            showMonthlyActivity: true,
+            hiddenCustomFields: []
+        };
 
         // Hide loading, show content
         loading.classList.add('hidden');
@@ -41,10 +52,43 @@ async function loadDashboard() {
         displayAircraftBreakdown(stats.byAircraft);
         displayRecentFlights(flightsData.flights);
 
-        // Initialize charts
-        createHoursOverTimeChart(stats.cumulativeHours);
-        createAircraftChart(stats.byAircraft);
-        createMonthlyActivityChart(stats.monthlyActivity);
+        // Display custom field stats (respecting preferences)
+        displayCustomFieldStats(stats.customFieldTotals, prefs.hiddenCustomFields || []);
+
+        // Initialize charts based on preferences
+        const hoursOverTimeContainer = document.getElementById('hoursOverTimeChart')?.closest('.chart-card');
+        const aircraftChartContainer = document.getElementById('aircraftChart')?.closest('.chart-card');
+        const monthlyChartContainer = document.getElementById('monthlyChart')?.closest('.chart-card');
+
+        if (prefs.showHoursOverTime !== false) {
+            createHoursOverTimeChart(stats.cumulativeHours);
+            if (hoursOverTimeContainer) hoursOverTimeContainer.style.display = '';
+        } else {
+            if (hoursOverTimeContainer) hoursOverTimeContainer.style.display = 'none';
+        }
+
+        if (prefs.showAircraftChart !== false) {
+            createAircraftChart(stats.byAircraft);
+            if (aircraftChartContainer) aircraftChartContainer.style.display = '';
+        } else {
+            if (aircraftChartContainer) aircraftChartContainer.style.display = 'none';
+        }
+
+        if (prefs.showMonthlyActivity !== false) {
+            createMonthlyActivityChart(stats.monthlyActivity);
+            if (monthlyChartContainer) monthlyChartContainer.style.display = '';
+        } else {
+            if (monthlyChartContainer) monthlyChartContainer.style.display = 'none';
+        }
+
+        // Hide charts section entirely if all charts are hidden
+        const chartsSection = document.querySelector('.charts-section');
+        if (chartsSection) {
+            const allHidden = prefs.showHoursOverTime === false &&
+                             prefs.showAircraftChart === false &&
+                             prefs.showMonthlyActivity === false;
+            chartsSection.style.display = allHidden ? 'none' : '';
+        }
 
     } catch (error) {
         console.error('Dashboard load error:', error);
@@ -62,6 +106,35 @@ function displayStats(stats) {
     document.getElementById('dualHours').textContent = stats.totalDualHours.toFixed(1);
     document.getElementById('picHours').textContent = stats.totalPicHours.toFixed(1);
     document.getElementById('groundTimeHours').textContent = (stats.groundTimeHours || 0).toFixed(1);
+}
+
+function displayCustomFieldStats(customFieldTotals, hiddenFieldIds) {
+    const container = document.getElementById('customFieldsStatsContainer');
+    const statsContainer = document.getElementById('customFieldsStats');
+
+    if (!container || !statsContainer) return;
+
+    // Filter out hidden fields and fields with 0 hours
+    const visibleFields = (customFieldTotals || []).filter(field =>
+        !hiddenFieldIds.includes(field.id) && field.total_hours > 0
+    );
+
+    if (visibleFields.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    container.classList.remove('hidden');
+
+    const html = visibleFields.map(field => `
+        <div class="stat-card">
+            <div class="stat-label">${escapeHtml(field.field_label)}</div>
+            <div class="stat-value">${field.total_hours.toFixed(1)}</div>
+            <div class="stat-subtitle">Custom experience hours</div>
+        </div>
+    `).join('');
+
+    statsContainer.innerHTML = html;
 }
 
 function displayAircraftBreakdown(aircraftData) {

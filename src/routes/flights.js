@@ -244,6 +244,18 @@ router.get('/stats/summary', (req, res) => {
       return { month: item.month, totalHours: runningTotal };
     });
 
+    // Get custom field totals for this user
+    const customFieldTotals = db.prepare(`
+      SELECT cf.id, cf.field_name, cf.field_label,
+             COALESCE(SUM(cfv.value), 0) as total_hours
+      FROM custom_fields cf
+      LEFT JOIN custom_field_values cfv ON cf.id = cfv.field_id
+      LEFT JOIN flights f ON cfv.flight_id = f.id AND f.user_id = ?
+      WHERE cf.user_id = ?
+      GROUP BY cf.id, cf.field_name, cf.field_label
+      ORDER BY cf.field_label ASC
+    `).all(req.session.userId, req.session.userId);
+
     res.json({
       totalHours: totalHours.total,
       groundTimeHours: groundTimeHours.total,
@@ -255,7 +267,8 @@ router.get('/stats/summary', (req, res) => {
       byAircraft: hoursByAircraft,
       flights: recentFlights,
       monthlyActivity: monthlyActivity,
-      cumulativeHours: cumulativeHours
+      cumulativeHours: cumulativeHours,
+      customFieldTotals: customFieldTotals
     });
   } catch (error) {
     console.error('Error fetching statistics:', error);

@@ -214,6 +214,18 @@ function initializeDatabase() {
     )
   `);
 
+  // Create user_preferences table for dashboard settings
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER UNIQUE NOT NULL,
+      dashboard_config TEXT DEFAULT '{}',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
   // Create index on date for faster sorting
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_flights_date ON flights(date DESC)

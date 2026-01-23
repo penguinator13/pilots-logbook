@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAircraftList();
     loadCustomFields();
     loadTags();
+    loadDashboardSettings();
 
     // Load aircraft for prime logbook form using common.js helper
     const primeAircraftSelect = document.getElementById('primeAircraftType');
@@ -1022,6 +1023,164 @@ function calculatePrimeTotal() {
     const display = document.getElementById('primeTotalDisplay');
     if (display) {
         display.textContent = `${total.toFixed(1)} hours`;
+    }
+}
+
+// ==================== DASHBOARD SETTINGS ====================
+
+let dashboardCustomFields = [];
+
+async function loadDashboardSettings() {
+    const loading = document.getElementById('dashboardSettingsLoading');
+    const content = document.getElementById('dashboardSettingsContent');
+
+    // Check if elements exist (they might not if tab hasn't been rendered)
+    if (!loading || !content) {
+        console.warn('Dashboard settings elements not found');
+        return;
+    }
+
+    // Show loading
+    loading.classList.remove('hidden');
+    content.classList.add('hidden');
+
+    try {
+        // Fetch preferences and custom fields in parallel
+        const [prefsResponse, fieldsResponse] = await Promise.all([
+            fetch('/api/preferences'),
+            fetch('/api/custom-fields')
+        ]);
+
+        // Default preferences if API fails
+        let prefs = {
+            showHoursOverTime: true,
+            showAircraftChart: true,
+            showMonthlyActivity: true,
+            hiddenCustomFields: []
+        };
+
+        if (prefsResponse.ok) {
+            prefs = await prefsResponse.json();
+        }
+
+        dashboardCustomFields = fieldsResponse.ok ? await fieldsResponse.json() : [];
+
+        // Set chart toggle states
+        const hoursToggle = document.getElementById('showHoursOverTime');
+        const aircraftToggle = document.getElementById('showAircraftChart');
+        const monthlyToggle = document.getElementById('showMonthlyActivity');
+
+        if (hoursToggle) hoursToggle.checked = prefs.showHoursOverTime !== false;
+        if (aircraftToggle) aircraftToggle.checked = prefs.showAircraftChart !== false;
+        if (monthlyToggle) monthlyToggle.checked = prefs.showMonthlyActivity !== false;
+
+        // Render custom field toggles
+        renderCustomFieldToggles(dashboardCustomFields, prefs.hiddenCustomFields || []);
+
+        // Hide loading, show content
+        loading.classList.add('hidden');
+        content.classList.remove('hidden');
+
+        // Set up save button (only once)
+        const saveBtn = document.getElementById('saveDashboardSettings');
+        if (saveBtn && !saveBtn.hasAttribute('data-listener-added')) {
+            saveBtn.addEventListener('click', saveDashboardSettings);
+            saveBtn.setAttribute('data-listener-added', 'true');
+        }
+
+    } catch (error) {
+        console.error('Load dashboard settings error:', error);
+    } finally {
+        // Always hide loading and show content
+        if (loading) loading.classList.add('hidden');
+        if (content) content.classList.remove('hidden');
+    }
+}
+
+function renderCustomFieldToggles(customFields, hiddenFieldIds) {
+    const section = document.getElementById('customFieldTogglesSection');
+    const container = document.getElementById('customFieldToggles');
+
+    if (!customFields || customFields.length === 0) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    section.classList.remove('hidden');
+
+    const html = customFields.map(field => {
+        const isHidden = hiddenFieldIds.includes(field.id);
+        return `
+            <label class="toggle-item">
+                <input type="checkbox" class="custom-field-toggle" data-field-id="${field.id}" ${!isHidden ? 'checked' : ''}>
+                <span>${escapeHtml(field.field_label)}</span>
+            </label>
+        `;
+    }).join('');
+
+    container.innerHTML = html;
+}
+
+async function saveDashboardSettings() {
+    const saveBtn = document.getElementById('saveDashboardSettings');
+    const successAlert = document.getElementById('successAlert');
+    const errorAlert = document.getElementById('errorAlert');
+
+    // Clear previous messages
+    successAlert.classList.add('hidden');
+    errorAlert.classList.add('hidden');
+
+    // Disable button
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    try {
+        // Collect chart settings
+        const showHoursOverTime = document.getElementById('showHoursOverTime').checked;
+        const showAircraftChart = document.getElementById('showAircraftChart').checked;
+        const showMonthlyActivity = document.getElementById('showMonthlyActivity').checked;
+
+        // Collect hidden custom field IDs (unchecked = hidden)
+        const hiddenCustomFields = [];
+        document.querySelectorAll('.custom-field-toggle').forEach(toggle => {
+            if (!toggle.checked) {
+                hiddenCustomFields.push(parseInt(toggle.getAttribute('data-field-id')));
+            }
+        });
+
+        const response = await fetch('/api/preferences', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                showHoursOverTime,
+                showAircraftChart,
+                showMonthlyActivity,
+                hiddenCustomFields
+            }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            successAlert.textContent = 'Dashboard settings saved successfully!';
+            successAlert.classList.remove('hidden');
+
+            setTimeout(() => {
+                successAlert.classList.add('hidden');
+            }, 3000);
+        } else {
+            throw new Error(data.error || 'Failed to save settings');
+        }
+
+    } catch (error) {
+        console.error('Save dashboard settings error:', error);
+        errorAlert.textContent = error.message || 'Failed to save settings. Please try again.';
+        errorAlert.classList.remove('hidden');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Settings';
     }
 }
 
