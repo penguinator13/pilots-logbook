@@ -4,26 +4,26 @@ services:
     container_name: ${CONTAINER_NAME:-pilots-logbook}
     restart: unless-stopped
     ports:
-      - "${HOST_PORT:-3000}:${PORT:-3000}"
+      - "${HOST_PORT}:${PORT}"
     volumes:
       # Persistent storage for SQLite database
-      - ${DATA_PATH:-./data}:/app/data
+      - ${DATA_PATH}:/app/data
     environment:
       # Application settings
       NODE_ENV: production
-      PORT: ${PORT:-3000}
-      TZ: ${TZ:-America/Vancouver}
+      PORT: ${PORT}
+      TZ: ${TZ}
 
       # Database
       DB_PATH: ${DB_PATH:-/app/data/logbook.db}
 
       # Security - CHANGE THESE VALUES!
-      SESSION_SECRET: ${SESSION_SECRET:-change-this-to-a-random-string-in-production}
-      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      SESSION_SECRET: ${SESSION_SECRET}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
 
       # Reverse proxy support (set to true when behind nginx/cloudflare tunnel)
-      TRUST_PROXY: ${TRUST_PROXY:-false}
+      TRUST_PROXY: ${TRUST_PROXY}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:${PORT:-3000}/api/auth/me', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
