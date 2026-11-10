@@ -6,7 +6,8 @@
 async function checkAuth() {
     try {
         const response = await fetch('/api/auth/me');
-        if (!response.ok) {
+        const data = response.ok ? await response.json() : { authenticated: false };
+        if (!data.authenticated) {
             window.location.href = '/login.html';
         }
     } catch (error) {

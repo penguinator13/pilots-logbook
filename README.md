@@ -104,7 +104,7 @@ All configuration is done through environment variables. Create a `.env` file (u
 |----------|-------------|---------|
 | `SESSION_SECRET` | Secret key for session encryption | (required - change this!) |
 | `ADMIN_USERNAME` | Initial admin username | `admin` |
-| `ADMIN_PASSWORD` | Initial admin password | `changeme` |
+| `ADMIN_PASSWORD` | Initial admin password (first run only). If unset, a random one is generated and printed in the logs | *(generated)* |
 | `PORT` | Internal application port | `3000` |
 | `HOST_PORT` | External port to access app | `3000` |
 | `DB_PATH` | Path to SQLite database (inside container) | `/app/data/logbook.db` |
@@ -241,21 +241,17 @@ The dashboard shows:
 
 ### Backing Up Your Data
 
-The entire flight database is stored in a single SQLite file: `./data/logbook.db`
+**From the app** (easiest): Settings > Account > **Download Database Backup**. This uses SQLite's online-backup API, so it is a consistent snapshot even while the app is running. The same endpoint is available at `GET /api/backup/db` for scripted pulls with a logged-in session.
 
-**Manual Backup**:
+**Manual Backup** (on the host, database is in WAL mode so use sqlite's backup command rather than a plain `cp` while the app is running):
 ```bash
-# Copy the database file
-cp ./data/logbook.db ./data/logbook.db.backup
-
-# Or create a timestamped backup
-cp ./data/logbook.db "./data/logbook.db.backup.$(date +%Y%m%d_%H%M%S)"
+sqlite3 ./data/logbook.db ".backup ./backups/logbook-$(date +%F).db"
 ```
 
 **Automated Backup** (using cron):
 ```bash
 # Add to crontab
-0 2 * * * cp /path/to/logbook/data/logbook.db /path/to/backups/logbook.db.$(date +\%Y\%m\%d)
+0 2 * * * sqlite3 /path/to/logbook/data/logbook.db ".backup /path/to/backups/logbook-$(date +\%F).db"
 ```
 
 ### Restoring from Backup
@@ -369,7 +365,7 @@ docker-compose logs -f
 ### Can't login
 
 1. Check your credentials in the `.env` file or `docker-compose.yml`
-2. The default credentials are `admin` / `changeme`
+2. The default username is `admin`; the initial password is whatever `ADMIN_PASSWORD` was at first run, or the generated one printed in the startup logs (`docker compose logs logbook`)
 3. Rebuild the container if you changed credentials:
    ```bash
    docker-compose down
@@ -423,6 +419,9 @@ The application uses SQLite with the following tables:
 - `created_at`: Entry creation timestamp
 
 ## Security Considerations
+
+- Change your password after first login under **Settings > Account** (also signs out other devices).
+- A liveness endpoint is exposed at `GET /healthz` (no auth, not rate-limited) for Docker/systemd health checks.
 
 1. **Change default credentials** immediately
 2. **Use a strong SESSION_SECRET** (at least 32 random characters)

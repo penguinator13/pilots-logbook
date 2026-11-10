@@ -35,7 +35,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Set up prime logbook real-time calculation
     setupPrimeBreakdownCalculation();
+
+    // Account tab
+    setupAccountTab();
 });
+
+// ==================== ACCOUNT ====================
+
+async function setupAccountTab() {
+    const form = document.getElementById('changePasswordForm');
+    if (!form) return;
+
+    try {
+        const me = await (await fetch('/api/auth/me')).json();
+        if (me.username) {
+            document.getElementById('accountUsername').textContent = me.username;
+            document.getElementById('accountUsernameHidden').value = me.username;
+        }
+    } catch (e) { /* non-fatal */ }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('changePasswordBtn');
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (newPassword !== confirmPassword) {
+            showToast('New passwords do not match', 'error');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+        try {
+            const response = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                form.reset();
+                showToast('Password updated', 'success');
+            } else {
+                showToast(data.error || 'Could not change password', 'error');
+            }
+        } catch (err) {
+            showToast('Network error. Please try again.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Update Password';
+        }
+    });
+}
 
 function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');

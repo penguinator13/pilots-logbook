@@ -12,17 +12,31 @@ router.use(requireAuth);
  * Calculate total flight time from component fields
  */
 function calculateFlightTime(data) {
-  return (
-    (parseFloat(data.day_pic) || 0) +
-    (parseFloat(data.night_pic) || 0) +
-    (parseFloat(data.day_dual) || 0) +
-    (parseFloat(data.night_dual) || 0) +
-    (parseFloat(data.day_sic) || 0) +
-    (parseFloat(data.night_sic) || 0) +
-    (parseFloat(data.day_cmnd_practice) || 0) +
-    (parseFloat(data.night_cmnd_practice) || 0)
-  );
+  const total = HOUR_FIELDS.reduce((sum, f) => sum + parseHours(data[f]), 0);
+  return Math.round(total * 100) / 100;
 }
+
+/**
+ * Parse a non-negative decimal hours value ("" / undefined -> 0)
+ */
+function parseHours(value) {
+  const n = parseFloat(value);
+  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+}
+
+/**
+ * Parse a non-negative integer count ("" / undefined -> 0)
+ */
+function parseCount(value) {
+  const n = parseInt(value, 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+const HOUR_FIELDS = ['day_pic', 'night_pic', 'day_dual', 'night_dual', 'day_sic', 'night_sic', 'day_cmnd_practice', 'night_cmnd_practice'];
+const COUNT_FIELDS = ['takeoffs_day', 'takeoffs_night', 'landings_day', 'landings_night'];
+const AIRCRAFT_CATEGORIES = ['Helicopter', 'Aeroplane', 'Simulator'];
+const ENGINE_TYPES = ['Single Engine', 'Multi Engine'];
+const MAX_HOURS_PER_ENTRY = 24;
 
 /**
  * Validate flight data
@@ -33,19 +47,73 @@ function validateFlightData(data, flight_time) {
     return { valid: false, error: 'Missing required fields: Date and Aircraft Type are required' };
   }
 
+  if (typeof data.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(data.date)) {
+    return { valid: false, error: 'Date must be in YYYY-MM-DD format' };
+  }
+  const [y, m, d] = data.date.split('-').map(Number);
+  const flightDate = new Date(y, m - 1, d);
+  if (flightDate.getFullYear() !== y || flightDate.getMonth() !== m - 1 || flightDate.getDate() !== d) {
+    return { valid: false, error: 'Date is not a valid calendar date' };
+  }
+
+  if (typeof data.aircraft_type !== 'string' || data.aircraft_type.trim().length === 0 || data.aircraft_type.length > 50) {
+    return { valid: false, error: 'Aircraft Type must be 1-50 characters' };
+  }
+
+  for (const field of [...HOUR_FIELDS, ...COUNT_FIELDS]) {
+    const raw = data[field];
+    if (raw === undefined || raw === null || raw === '') continue;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) {
+      return { valid: false, error: `${field} must be a non-negative number` };
+    }
+  }
+
   if (flight_time <= 0) {
     return { valid: false, error: 'Total flight time must be greater than 0. Please enter at least one flight time value.' };
   }
 
-  const flightDate = new Date(data.date);
+  // Prime (carry-forward) entries can legitimately hold hundreds of hours
+  const isPrimeEntry = typeof data.route === 'string' && data.route.includes('LOGBOOK PRIME ENTRY');
+  if (!isPrimeEntry && flight_time > MAX_HOURS_PER_ENTRY) {
+    return { valid: false, error: `Total flight time cannot exceed ${MAX_HOURS_PER_ENTRY} hours for a single entry` };
+  }
+
+  if (data.aircraft_category && !AIRCRAFT_CATEGORIES.includes(data.aircraft_category)) {
+    return { valid: false, error: 'Invalid aircraft category' };
+  }
+  if (data.engine_type && !ENGINE_TYPES.includes(data.engine_type)) {
+    return { valid: false, error: 'Invalid engine type' };
+  }
+
   const today = new Date();
   today.setHours(23, 59, 59, 999);
-
   if (flightDate > today) {
     return { valid: false, error: 'Flight date cannot be in the future' };
   }
 
   return { valid: true };
+}
+
+/**
+ * Escape a value for CSV output (RFC 4180)
+ */
+function csvEscape(value) {
+  if (value === null || value === undefined) return '';
+  const str = String(value);
+  // Neutralise spreadsheet formula injection
+  const safe = /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
+
+/**
+ * Normalise an incoming custom_fields array into [{field_id, value}] with value > 0
+ */
+function normaliseCustomFields(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map(cf => ({ field_id: parseInt(cf && cf.field_id, 10), value: parseHours(cf && cf.value) }))
+    .filter(cf => Number.isInteger(cf.field_id) && cf.value > 0);
 }
 
 /**
@@ -88,13 +156,13 @@ function roundHours(value) {
 
 // Get all flights with pagination and filtering
 router.get('/', (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 20));
   const offset = (page - 1) * limit;
   const aircraftFilter = req.query.aircraft_type || '';
 
   try {
-    let query = 'SELECT id, date, aircraft_type, registration, pilot_in_command, copilot_student, flight_details as route, flight_time_hours as flight_time, day_hours, night_hours FROM flights WHERE user_id = ?';
+    let query = 'SELECT id, date, aircraft_type, registration, pilot_in_command, copilot_student, flight_details as route, flight_time_hours as flight_time, aircraft_category, departure, arrival FROM flights WHERE user_id = ?';
     let countQuery = 'SELECT COUNT(*) as total FROM flights WHERE user_id = ?';
     const params = [req.session.userId];
 
@@ -312,73 +380,60 @@ router.post('/', (req, res) => {
     return res.status(400).json({ error: validation.error });
   }
 
+  const customFields = normaliseCustomFields(req.body.custom_fields);
+
   try {
-    const stmt = db.prepare(`
+    const insertFlight = db.prepare(`
       INSERT INTO flights (
         user_id, date, aircraft_type, registration, pilot_in_command,
         copilot_student, flight_details, flight_time_hours,
         day_pic, night_pic, day_dual, night_dual, day_sic, night_sic,
         day_cmnd_practice, night_cmnd_practice,
-        longline_hours, mountain_hours, instructor_hours, crosscountry_hours,
-        night_vision_hours, instrument_hours, simulated_instrument_hours, ground_instrument_hours,
         aircraft_category, engine_type,
         takeoffs_day, takeoffs_night, landings_day, landings_night,
         departure, arrival
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertCustomField = db.prepare(`
+      INSERT INTO custom_field_values (flight_id, field_id, value)
+      SELECT ?, id, ? FROM custom_fields WHERE id = ? AND user_id = ?
     `);
 
-    const result = stmt.run(
-      req.session.userId,
-      date,
-      aircraft_type,
-      registration || '',
-      pic || '',
-      copilot || '',
-      route || '',
-      flight_time,  // Calculated total
-      parseFloat(day_pic) || 0,
-      parseFloat(night_pic) || 0,
-      parseFloat(day_dual) || 0,
-      parseFloat(night_dual) || 0,
-      parseFloat(day_sic) || 0,
-      parseFloat(night_sic) || 0,
-      parseFloat(day_cmnd_practice) || 0,
-      parseFloat(night_cmnd_practice) || 0,
-      0,  // longline_hours - legacy column, no longer used
-      0,  // mountain_hours - legacy column, no longer used
-      0,  // instructor_hours - legacy column, no longer used
-      0,  // crosscountry_hours - legacy column, no longer used
-      0,  // night_vision_hours - legacy column, no longer used
-      0,  // instrument_hours - legacy column, no longer used
-      0,  // simulated_instrument_hours - legacy column, no longer used
-      0,  // ground_instrument_hours - legacy column, no longer used
-      aircraft_category || 'Helicopter',
-      engine_type || 'Single Engine',
-      parseInt(takeoffs_day) || 0,
-      parseInt(takeoffs_night) || 0,
-      parseInt(landings_day) || 0,
-      parseInt(landings_night) || 0,
-      departure || '',
-      arrival || ''
-    );
-
-    const flightId = result.lastInsertRowid;
-
-    // Handle custom fields if provided
-    if (req.body.custom_fields && Array.isArray(req.body.custom_fields)) {
-      const customFieldStmt = db.prepare(`
-        INSERT INTO custom_field_values (flight_id, field_id, value)
-        VALUES (?, ?, ?)
-        ON CONFLICT(flight_id, field_id) DO UPDATE SET value = excluded.value
-      `);
-
-      for (const cf of req.body.custom_fields) {
-        if (cf.field_id && cf.value !== undefined) {
-          customFieldStmt.run(flightId, cf.field_id, parseFloat(cf.value) || 0);
-        }
+    const createFlight = db.transaction(() => {
+      const result = insertFlight.run(
+        req.session.userId,
+        date,
+        aircraft_type.trim(),
+        (registration || '').trim(),
+        (pic || '').trim(),
+        (copilot || '').trim(),
+        route || '',
+        flight_time,
+        parseHours(day_pic),
+        parseHours(night_pic),
+        parseHours(day_dual),
+        parseHours(night_dual),
+        parseHours(day_sic),
+        parseHours(night_sic),
+        parseHours(day_cmnd_practice),
+        parseHours(night_cmnd_practice),
+        aircraft_category || 'Helicopter',
+        engine_type || 'Single Engine',
+        parseCount(takeoffs_day),
+        parseCount(takeoffs_night),
+        parseCount(landings_day),
+        parseCount(landings_night),
+        (departure || '').trim().toUpperCase(),
+        (arrival || '').trim().toUpperCase()
+      );
+      const flightId = result.lastInsertRowid;
+      for (const cf of customFields) {
+        insertCustomField.run(flightId, cf.value, cf.field_id, req.session.userId);
       }
-    }
+      return flightId;
+    });
 
+    const flightId = createFlight();
     const newFlight = db.prepare('SELECT * FROM flights WHERE id = ?').get(flightId);
 
     res.status(201).json(newFlight);
@@ -424,81 +479,75 @@ router.put('/:id', (req, res) => {
     return res.status(400).json({ error: validation.error });
   }
 
+  const flightId = parseInt(req.params.id, 10);
+  if (!Number.isInteger(flightId)) {
+    return res.status(400).json({ error: 'Invalid flight id' });
+  }
+  const customFields = normaliseCustomFields(req.body.custom_fields);
+  const replaceCustomFields = Array.isArray(req.body.custom_fields);
+
   try {
-    const stmt = db.prepare(`
+    const updateFlight = db.prepare(`
       UPDATE flights SET
         date = ?, aircraft_type = ?, registration = ?, pilot_in_command = ?,
         copilot_student = ?, flight_details = ?, flight_time_hours = ?,
         day_pic = ?, night_pic = ?, day_dual = ?, night_dual = ?,
         day_sic = ?, night_sic = ?, day_cmnd_practice = ?, night_cmnd_practice = ?,
-        longline_hours = ?, mountain_hours = ?, instructor_hours = ?, crosscountry_hours = ?,
-        night_vision_hours = ?, instrument_hours = ?, simulated_instrument_hours = ?, ground_instrument_hours = ?,
         aircraft_category = ?, engine_type = ?,
         takeoffs_day = ?, takeoffs_night = ?, landings_day = ?, landings_night = ?,
         departure = ?, arrival = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND user_id = ?
     `);
+    const deleteCustomFields = db.prepare('DELETE FROM custom_field_values WHERE flight_id = ?');
+    const insertCustomField = db.prepare(`
+      INSERT INTO custom_field_values (flight_id, field_id, value)
+      SELECT ?, id, ? FROM custom_fields WHERE id = ? AND user_id = ?
+    `);
 
-    const result = stmt.run(
-      date,
-      aircraft_type,
-      registration || '',
-      pic || '',
-      copilot || '',
-      route || '',
-      flight_time,  // Calculated total
-      parseFloat(day_pic) || 0,
-      parseFloat(night_pic) || 0,
-      parseFloat(day_dual) || 0,
-      parseFloat(night_dual) || 0,
-      parseFloat(day_sic) || 0,
-      parseFloat(night_sic) || 0,
-      parseFloat(day_cmnd_practice) || 0,
-      parseFloat(night_cmnd_practice) || 0,
-      0,  // longline_hours - legacy column, no longer used
-      0,  // mountain_hours - legacy column, no longer used
-      0,  // instructor_hours - legacy column, no longer used
-      0,  // crosscountry_hours - legacy column, no longer used
-      0,  // night_vision_hours - legacy column, no longer used
-      0,  // instrument_hours - legacy column, no longer used
-      0,  // simulated_instrument_hours - legacy column, no longer used
-      0,  // ground_instrument_hours - legacy column, no longer used
-      aircraft_category || 'Helicopter',
-      engine_type || 'Single Engine',
-      parseInt(takeoffs_day) || 0,
-      parseInt(takeoffs_night) || 0,
-      parseInt(landings_day) || 0,
-      parseInt(landings_night) || 0,
-      departure || '',
-      arrival || '',
-      req.params.id,
-      req.session.userId
-    );
+    const applyUpdate = db.transaction(() => {
+      const result = updateFlight.run(
+        date,
+        aircraft_type.trim(),
+        (registration || '').trim(),
+        (pic || '').trim(),
+        (copilot || '').trim(),
+        route || '',
+        flight_time,
+        parseHours(day_pic),
+        parseHours(night_pic),
+        parseHours(day_dual),
+        parseHours(night_dual),
+        parseHours(day_sic),
+        parseHours(night_sic),
+        parseHours(day_cmnd_practice),
+        parseHours(night_cmnd_practice),
+        aircraft_category || 'Helicopter',
+        engine_type || 'Single Engine',
+        parseCount(takeoffs_day),
+        parseCount(takeoffs_night),
+        parseCount(landings_day),
+        parseCount(landings_night),
+        (departure || '').trim().toUpperCase(),
+        (arrival || '').trim().toUpperCase(),
+        flightId,
+        req.session.userId
+      );
+      if (result.changes === 0) return false;
+      if (replaceCustomFields) {
+        deleteCustomFields.run(flightId);
+        for (const cf of customFields) {
+          insertCustomField.run(flightId, cf.value, cf.field_id, req.session.userId);
+        }
+      }
+      return true;
+    });
 
-    if (result.changes === 0) {
+    if (!applyUpdate()) {
       return res.status(404).json({ error: 'Flight not found' });
     }
 
-    // Handle custom fields if provided
-    if (req.body.custom_fields && Array.isArray(req.body.custom_fields)) {
-      // First, delete existing custom field values for this flight
-      db.prepare('DELETE FROM custom_field_values WHERE flight_id = ?').run(req.params.id);
-
-      // Insert new values
-      const customFieldStmt = db.prepare(`
-        INSERT INTO custom_field_values (flight_id, field_id, value)
-        VALUES (?, ?, ?)
-      `);
-
-      for (const cf of req.body.custom_fields) {
-        if (cf.field_id && cf.value !== undefined && parseFloat(cf.value) > 0) {
-          customFieldStmt.run(req.params.id, cf.field_id, parseFloat(cf.value));
-        }
-      }
-    }
-
-    const updatedFlight = db.prepare('SELECT * FROM flights WHERE id = ?').get(req.params.id);
+    const updatedFlight = db.prepare('SELECT * FROM flights WHERE id = ?').get(flightId);
 
     res.json(updatedFlight);
   } catch (error) {
@@ -568,7 +617,7 @@ router.get('/export/csv', (req, res) => {
       'Landings Night'
     ];
 
-    let csv = headers.join(',') + '\n';
+    let csv = headers.map(csvEscape).join(',') + '\n';
 
     // Batch fetch custom field values (fixes N+1 query)
     const flightIds = flights.map(f => f.id);
@@ -588,7 +637,7 @@ router.get('/export/csv', (req, res) => {
         flight.copilot_student || '',
         flight.departure || '',
         flight.arrival || '',
-        `"${(flight.flight_details || '').replace(/"/g, '""')}"`,
+        flight.flight_details || '',
         flight.flight_time_hours,
         flight.day_pic || 0,
         flight.night_pic || 0,
@@ -604,10 +653,10 @@ router.get('/export/csv', (req, res) => {
         flight.landings_day || 0,
         flight.landings_night || 0
       ];
-      csv += row.join(',') + '\n';
+      csv += row.map(csvEscape).join(',') + '\n';
     });
 
-    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename=logbook-export.csv');
     res.send(csv);
   } catch (error) {

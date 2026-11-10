@@ -116,7 +116,7 @@ Please build this as a working, production-ready application that I can deploy i
 
 ## DEVELOPMENT PROGRESS
 
-Last updated: 2026-01-24
+Last updated: 2026-11-10
 
 ### ✅ COMPLETED - PRODUCTION-READY APPLICATION WITH ENHANCED FEATURES!
 
@@ -386,6 +386,23 @@ The application is **production-ready** and can be deployed immediately. All cor
 - Add your own aircraft types via the Aircraft management page
 
 ### RECENT ENHANCEMENTS:
+
+**2026-11-10 (v1.8.0) - Hardening & deployment review (Alfred/Hermes):**
+1. **Auth/pages**: HTML pages were served by `express.static` *before* the auth check, so `/dashboard.html`, `/flights.html` etc. loaded unauthenticated (API calls then 401'd). Session middleware now runs first and every `*.html` except login redirects to `/login.html` when signed out. Frontend `checkAuth()` also fixed (it checked `response.ok` but `/api/auth/me` always returns 200; now checks `authenticated`).
+2. **Persistent sessions**: replaced express-session's MemoryStore (leaks, loses logins on every restart) with a SQLite-backed store in the same DB (`src/lib/session-store.js`, `sessions` table). Cookie renamed `logbook.sid`, rolling expiry.
+3. **Change password**: new `POST /api/auth/change-password` + Settings > **Account** tab. Invalidates other sessions. Previously there was no way to change the password at all after first run.
+4. **Backup**: `GET /api/backup/db` (SQLite online backup API) + download button on the Account tab.
+5. **Database**: WAL journal mode, `busy_timeout`, `synchronous=NORMAL`; migrations rewritten as a table-driven `addColumnIfMissing` (no more try/catch-per-column); index on `custom_field_values(flight_id)`; graceful SIGTERM shutdown with WAL checkpoint.
+6. **Validation**: date must be a real `YYYY-MM-DD` calendar date; hours/counts must be non-negative numbers; a single (non-prime) entry is capped at 24 h; `aircraft_category` / `engine_type` restricted to known values; custom field ids are validated against the user's own fields (previously any id was accepted). Flight create/update + custom field writes now run in one transaction.
+7. **CSV export**: every field is RFC-4180 escaped (previously only Flight Details was quoted, so a comma in Registration/PIC/route broke the row) and leading `=+-@` are neutralised against spreadsheet formula injection.
+8. **Security headers**: helmet now applies to all responses (pages included), CSP allows Chart.js from jsDelivr and the app's inline `onclick` handlers (`script-src-attr 'unsafe-inline'`, helmet's default of `'none'` breaks every button). COOP disabled (plain-HTTP LAN noise).
+9. **Rate limiting**: API limit raised 100 → 600 per 15 min (a single page load issues several calls; 100 could trip on normal use). Login limit 5 → 10. New `/healthz` endpoint outside the limiter for health checks (Docker healthcheck updated).
+10. **Dependencies**: Node 18 (EOL) → 22 in the Dockerfile; `better-sqlite3` ^9 → ^12 and `bcrypt` ^5 → ^6 (no prebuilt binaries for Node 22 on the old versions); `npm audit fix` → 0 vulnerabilities. `npm ci --omit=dev` in the image.
+11. **Initial password**: if `ADMIN_PASSWORD` is unset a random one is generated and logged once instead of defaulting to `changeme`. Dockerfile no longer bakes in default secrets.
+12. **Tests**: `npm test` runs `test/smoke.test.js` — boots the server on a temp DB and exercises login, page protection, CSP, validation, create/update/delete, stats, CSV/PDF/summary exports, backup download, password change, and session persistence.
+13. **Minor**: flight list no longer returns dead `day_hours/night_hours` columns (returns `aircraft_category`, `departure`, `arrival` instead); pagination clamped (1–200); unknown `/api/*` routes return JSON 404; `x-powered-by` removed.
+
+**Homelab deployment**: runs natively (no Docker) in Proxmox LXC 180 `pilots-logbook` (192.168.4.111:3000), systemd `pilots-logbook.service`, app in `/opt/pilots-logbook`, data in `/var/lib/pilots-logbook/data`, env in `/etc/pilots-logbook.env`, nightly SQLite snapshot timer → `/var/lib/pilots-logbook/backups` (30-day retention), LXC included in the nightly PBS backup job. Details in `/root/CLAUDE.md` inside the LXC.
 
 **2026-01-24 (Latest Update - v1.7.0):**
 1. **Dashboard Display Settings**:

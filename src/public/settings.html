@@ -43,6 +43,7 @@
                 <button class="tab-button" data-tab="custom-fields">Custom Fields</button>
                 <button class="tab-button" data-tab="dashboard">Dashboard</button>
                 <button class="tab-button" data-tab="prime-logbook">Prime Logbook</button>
+                <button class="tab-button" data-tab="account">Account</button>
             </div>
 
             <!-- Aircraft Types Tab -->
@@ -358,6 +359,39 @@
                             <li>After priming, start logging your new flights normally</li>
                             <li>You can create multiple prime entries for different aircraft types</li>
                         </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Tab -->
+            <div class="tab-content" id="account-tab">
+                <div class="container-narrow">
+                    <div class="card">
+                        <h2 class="card-header">Change Password</h2>
+                        <p class="text-muted mb-3">Signed in as <strong id="accountUsername">&hellip;</strong>. Changing your password signs out any other devices.</p>
+                        <form id="changePasswordForm" autocomplete="on">
+                            <input type="text" name="username" id="accountUsernameHidden" autocomplete="username" class="hidden" tabindex="-1" aria-hidden="true">
+                            <div class="form-group">
+                                <label for="currentPassword" class="form-label">Current Password</label>
+                                <input type="password" id="currentPassword" class="form-input" required autocomplete="current-password">
+                            </div>
+                            <div class="form-group">
+                                <label for="newPassword" class="form-label">New Password</label>
+                                <input type="password" id="newPassword" class="form-input" required minlength="8" autocomplete="new-password">
+                                <small class="text-muted">At least 8 characters.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                                <input type="password" id="confirmPassword" class="form-input" required minlength="8" autocomplete="new-password">
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="changePasswordBtn">Update Password</button>
+                        </form>
+                    </div>
+
+                    <div class="card mt-3">
+                        <h2 class="card-header">Backup</h2>
+                        <p class="text-muted mb-3">Download a complete snapshot of your logbook database (SQLite). Keep a copy somewhere safe; restoring is as simple as replacing <code>logbook.db</code> with this file.</p>
+                        <a href="/api/backup/db" class="btn btn-secondary" download>Download Database Backup</a>
                     </div>
                 </div>
             </div>

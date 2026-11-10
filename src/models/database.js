@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, '../../data/logbook.db');
@@ -13,8 +14,22 @@ if (!fs.existsSync(dbDir)) {
 
 const db = new Database(dbPath);
 
-// Enable foreign keys
+// Pragmas: WAL gives crash-safe, concurrent-friendly writes; busy_timeout
+// avoids SQLITE_BUSY if a backup/vacuum overlaps a request.
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
+db.pragma('busy_timeout = 5000');
 db.pragma('foreign_keys = ON');
+
+/**
+ * Add a column if it does not already exist (idempotent migration helper).
+ */
+function addColumnIfMissing(table, column, definition) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+  if (!cols.includes(column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
 
 // Initialize database schema
 function initializeDatabase() {
@@ -58,110 +73,31 @@ function initializeDatabase() {
     )
   `);
 
-  // Migrate existing table if needed (add new columns)
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN longline_hours REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN mountain_hours REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN instructor_hours REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN crosscountry_hours REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN night_vision_hours REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN instrument_hours REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN simulated_instrument_hours REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN aircraft_category TEXT DEFAULT 'Helicopter'`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN ground_instrument_hours REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN engine_type TEXT DEFAULT 'Single Engine'`);
-  } catch (e) {
-    // Column already exists
-  }
-
-  // Add new flight time breakdown fields
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN day_pic REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN night_pic REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN day_dual REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN night_dual REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN day_sic REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN night_sic REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN day_cmnd_practice REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN night_cmnd_practice REAL DEFAULT 0`);
-  } catch (e) {
-    // Column already exists
-  }
-
-  // Add departure and arrival location columns
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN departure TEXT DEFAULT ''`);
-  } catch (e) {
-    // Column already exists
-  }
-  try {
-    db.exec(`ALTER TABLE flights ADD COLUMN arrival TEXT DEFAULT ''`);
-  } catch (e) {
-    // Column already exists
+  // Migrate existing tables (add columns introduced after v1.0)
+  const flightMigrations = [
+    ['longline_hours', 'REAL DEFAULT 0'],
+    ['mountain_hours', 'REAL DEFAULT 0'],
+    ['instructor_hours', 'REAL DEFAULT 0'],
+    ['crosscountry_hours', 'REAL DEFAULT 0'],
+    ['night_vision_hours', 'REAL DEFAULT 0'],
+    ['instrument_hours', 'REAL DEFAULT 0'],
+    ['simulated_instrument_hours', 'REAL DEFAULT 0'],
+    ['aircraft_category', "TEXT DEFAULT 'Helicopter'"],
+    ['ground_instrument_hours', 'REAL DEFAULT 0'],
+    ['engine_type', "TEXT DEFAULT 'Single Engine'"],
+    ['day_pic', 'REAL DEFAULT 0'],
+    ['night_pic', 'REAL DEFAULT 0'],
+    ['day_dual', 'REAL DEFAULT 0'],
+    ['night_dual', 'REAL DEFAULT 0'],
+    ['day_sic', 'REAL DEFAULT 0'],
+    ['night_sic', 'REAL DEFAULT 0'],
+    ['day_cmnd_practice', 'REAL DEFAULT 0'],
+    ['night_cmnd_practice', 'REAL DEFAULT 0'],
+    ['departure', "TEXT DEFAULT ''"],
+    ['arrival', "TEXT DEFAULT ''"]
+  ];
+  for (const [column, definition] of flightMigrations) {
+    addColumnIfMissing('flights', column, definition);
   }
 
   // Create aircraft_types table for managing saved aircraft
@@ -226,32 +162,43 @@ function initializeDatabase() {
     )
   `);
 
-  // Create index on date for faster sorting
+  // Persistent login sessions (survive server restarts)
   db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_flights_date ON flights(date DESC)
+    CREATE TABLE IF NOT EXISTS sessions (
+      sid TEXT PRIMARY KEY,
+      sess TEXT NOT NULL,
+      expires INTEGER NOT NULL
+    )
   `);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires)`);
 
-  // Create index on aircraft_type for filtering
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_flights_aircraft ON flights(aircraft_type)
-  `);
-
-  // Create composite index for user_id + date (most common query pattern)
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_flights_user_date ON flights(user_id, date DESC)
-  `);
+  // Indexes
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_flights_date ON flights(date DESC)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_flights_aircraft ON flights(aircraft_type)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_flights_user_date ON flights(user_id, date DESC)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_cfv_flight ON custom_field_values(flight_id)`);
 
   // Check if default user exists
   const userCheck = db.prepare('SELECT COUNT(*) as count FROM users').get();
 
   if (userCheck.count === 0) {
-    // Create default user from environment variables
+    // Create default user from environment variables. If no password was
+    // supplied, generate one and print it once rather than shipping "changeme".
     const defaultUsername = process.env.ADMIN_USERNAME || 'admin';
-    const defaultPassword = process.env.ADMIN_PASSWORD || 'changeme';
+    let defaultPassword = process.env.ADMIN_PASSWORD;
+    let generated = false;
+    if (!defaultPassword) {
+      defaultPassword = crypto.randomBytes(9).toString('base64url');
+      generated = true;
+    }
     const hashedPassword = bcrypt.hashSync(defaultPassword, 10);
 
     db.prepare('INSERT INTO users (username, password) VALUES (?, ?)').run(defaultUsername, hashedPassword);
     console.log(`Default user created: ${defaultUsername}`);
+    if (generated) {
+      console.log(`Generated initial password for ${defaultUsername}: ${defaultPassword}`);
+      console.log('Change it under Settings > Account after first login.');
+    }
   }
 }
 

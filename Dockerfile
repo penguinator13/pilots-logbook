@@ -1,38 +1,31 @@
 # Helicopter Logbook - Dockerfile
 # Production-ready Node.js application
 
-FROM node:18-alpine
+FROM node:22-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Install dependencies first (for better caching)
+# Install production dependencies first (better layer caching)
 COPY package*.json ./
-RUN npm install --only=production
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy application code
 COPY src ./src
 
-# Create data directory for SQLite database
-RUN mkdir -p /data
+# Data directory for SQLite database (mounted as a volume at runtime)
+RUN mkdir -p /app/data && chown node:node /app/data
 
-# Set environment variables (can be overridden)
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV DB_PATH=/data/logbook.db
-ENV SESSION_SECRET=change-this-secret-in-production
-ENV ADMIN_USERNAME=admin
-ENV ADMIN_PASSWORD=changeme
+ENV DB_PATH=/app/data/logbook.db
+# SESSION_SECRET / ADMIN_USERNAME / ADMIN_PASSWORD must be supplied at runtime.
+# If ADMIN_PASSWORD is not set, a random one is generated and printed in the logs on first start.
 
-# Expose port
 EXPOSE 3000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://127.0.0.1:3000/api/auth/me', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+    CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||3000)+'/healthz', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)}).on('error', () => process.exit(1))"
 
-# Run as non-root user for security
 USER node
 
-# Start the application
 CMD ["node", "src/server.js"]
