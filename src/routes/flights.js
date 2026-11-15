@@ -152,6 +152,41 @@ function roundHours(value) {
   return Math.round(value * 100) / 100;
 }
 
+// Resolve association before flight validation: profile fields are authoritative.
+// Existing associations retain their historical snapshot, even after archival.
+function resolveAircraftProfile(req, res, next) {
+  const body = req.body;
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return res.status(400).json({ error: 'Expected an object' });
+  }
+  let existing;
+  if (req.method === 'PUT') {
+    existing = db.prepare('SELECT * FROM flights WHERE id = ? AND user_id = ?').get(req.params.id, req.session.userId);
+    if (!existing) return res.status(404).json({ error: 'Flight not found' });
+  }
+  const id = Object.hasOwn(body, 'aircraft_profile_id') ? body.aircraft_profile_id : (existing?.aircraft_profile_id ?? null);
+  if (id !== null && (!Number.isSafeInteger(id) || id <= 0)) {
+    return res.status(400).json({ error: 'aircraft_profile_id must be a positive integer or null' });
+  }
+  let snapshot;
+  if (id !== null) {
+    if (existing && existing.aircraft_profile_id === id) {
+      snapshot = existing;
+    } else {
+      snapshot = db.prepare('SELECT * FROM aircraft_profiles WHERE id = ? AND user_id = ? AND archived = 0').get(id, req.session.userId);
+      if (!snapshot) return res.status(400).json({ error: 'Active aircraft profile not found' });
+    }
+  }
+  req.body = { ...body, aircraft_profile_id: id };
+  if (snapshot) {
+    for (const key of ['aircraft_type', 'registration', 'aircraft_category', 'engine_type']) req.body[key] = snapshot[key];
+  }
+  next();
+}
+function recordAircraftUse(id, userId) {
+  if (id !== null) db.prepare("UPDATE aircraft_profiles SET last_used_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ? AND user_id = ?").run(id, userId);
+}
+
 // ==================== ROUTES ====================
 
 // Get all flights with pagination and filtering
@@ -162,7 +197,7 @@ router.get('/', (req, res) => {
   const aircraftFilter = req.query.aircraft_type || '';
 
   try {
-    let query = 'SELECT id, date, aircraft_type, registration, pilot_in_command, copilot_student, flight_details as route, flight_time_hours as flight_time, aircraft_category, departure, arrival FROM flights WHERE user_id = ?';
+    let query = 'SELECT id, aircraft_profile_id, date, aircraft_type, registration, pilot_in_command, copilot_student, flight_details as route, flight_time_hours as flight_time, aircraft_category, departure, arrival FROM flights WHERE user_id = ?';
     let countQuery = 'SELECT COUNT(*) as total FROM flights WHERE user_id = ?';
     const params = [req.session.userId];
 
@@ -193,7 +228,7 @@ router.get('/', (req, res) => {
 router.get('/:id', (req, res) => {
   try {
     const flight = db.prepare(`
-      SELECT id, date, aircraft_type, registration,
+      SELECT id, aircraft_profile_id, date, aircraft_type, registration,
              pilot_in_command as pic, copilot_student as copilot,
              flight_details as route, flight_time_hours as flight_time,
              day_pic, night_pic, day_dual, night_dual, day_sic, night_sic,
@@ -274,7 +309,7 @@ router.get('/stats/summary', (req, res) => {
 
     // Last 10 flights - select specific columns to avoid issues with missing columns
     const recentFlights = db.prepare(`
-      SELECT id, date, aircraft_type, aircraft_category, registration, pilot_in_command, copilot_student,
+      SELECT id, aircraft_profile_id, date, aircraft_type, aircraft_category, registration, pilot_in_command, copilot_student,
              flight_details, flight_time_hours, day_hours, night_hours,
              longline_hours, mountain_hours, instructor_hours,
              COALESCE(crosscountry_hours, 0) as crosscountry_hours,
@@ -345,7 +380,7 @@ router.get('/stats/summary', (req, res) => {
 });
 
 // Create new flight
-router.post('/', (req, res) => {
+router.post('/', resolveAircraftProfile, (req, res) => {
   const {
     date,
     aircraft_type,
@@ -385,14 +420,14 @@ router.post('/', (req, res) => {
   try {
     const insertFlight = db.prepare(`
       INSERT INTO flights (
-        user_id, date, aircraft_type, registration, pilot_in_command,
+        user_id, aircraft_profile_id, date, aircraft_type, registration, pilot_in_command,
         copilot_student, flight_details, flight_time_hours,
         day_pic, night_pic, day_dual, night_dual, day_sic, night_sic,
         day_cmnd_practice, night_cmnd_practice,
         aircraft_category, engine_type,
         takeoffs_day, takeoffs_night, landings_day, landings_night,
         departure, arrival
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertCustomField = db.prepare(`
       INSERT INTO custom_field_values (flight_id, field_id, value)
@@ -402,6 +437,7 @@ router.post('/', (req, res) => {
     const createFlight = db.transaction(() => {
       const result = insertFlight.run(
         req.session.userId,
+        req.body.aircraft_profile_id,
         date,
         aircraft_type.trim(),
         (registration || '').trim(),
@@ -430,6 +466,7 @@ router.post('/', (req, res) => {
       for (const cf of customFields) {
         insertCustomField.run(flightId, cf.value, cf.field_id, req.session.userId);
       }
+      recordAircraftUse(req.body.aircraft_profile_id, req.session.userId);
       return flightId;
     });
 
@@ -444,7 +481,7 @@ router.post('/', (req, res) => {
 });
 
 // Update flight
-router.put('/:id', (req, res) => {
+router.put('/:id', resolveAircraftProfile, (req, res) => {
   const {
     date,
     aircraft_type,
@@ -489,7 +526,7 @@ router.put('/:id', (req, res) => {
   try {
     const updateFlight = db.prepare(`
       UPDATE flights SET
-        date = ?, aircraft_type = ?, registration = ?, pilot_in_command = ?,
+        aircraft_profile_id = ?, date = ?, aircraft_type = ?, registration = ?, pilot_in_command = ?,
         copilot_student = ?, flight_details = ?, flight_time_hours = ?,
         day_pic = ?, night_pic = ?, day_dual = ?, night_dual = ?,
         day_sic = ?, night_sic = ?, day_cmnd_practice = ?, night_cmnd_practice = ?,
@@ -507,6 +544,7 @@ router.put('/:id', (req, res) => {
 
     const applyUpdate = db.transaction(() => {
       const result = updateFlight.run(
+        req.body.aircraft_profile_id,
         date,
         aircraft_type.trim(),
         (registration || '').trim(),
@@ -540,6 +578,7 @@ router.put('/:id', (req, res) => {
           insertCustomField.run(flightId, cf.value, cf.field_id, req.session.userId);
         }
       }
+      recordAircraftUse(req.body.aircraft_profile_id, req.session.userId);
       return true;
     });
 

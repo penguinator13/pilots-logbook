@@ -1,0 +1,35 @@
+/* Profile controls use the existing theme tokens in Cockpit and Original. */
+.aircraft-profile-picker {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--surface);
+}
+.aircraft-profile-picker .form-label:not(:first-child) { margin-top: 0.75rem; }
+.aircraft-profile-picker .form-help { margin-top: 0.5rem; }
+.profile-manage-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--primary-color); }
+.profile-settings :is(input:not([type="checkbox"]), select, button),
+.aircraft-profile-picker :is(input, select, button) { min-height: 44px; max-width: 100%; }
+.profile-settings :is(a, button, input, select):focus-visible,
+.aircraft-profile-picker :is(a, button, input, select):focus-visible {
+    outline: 3px solid var(--primary-color);
+    outline-offset: 3px;
+}
+.profile-checkbox { display: flex; align-items: center; gap: 0.75rem; min-height: 44px; padding-block: 0.5rem; cursor: pointer; }
+.profile-checkbox input { flex-shrink: 0; width: 20px; height: 20px; accent-color: var(--primary-color); }
+.profile-list-item { padding-block: 1rem; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.profile-list-item:last-child { border-bottom: 0; }
+.profile-list-item h3 { font-size: 1.05rem; margin-bottom: 0.25rem; }
+.profile-list-item p { margin-bottom: 0.75rem; }
+.profile-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.profile-actions button { min-width: 44px; }
+.profile-error { color: var(--danger-color); font-weight: 600; }
+#aircraftProfileForm { scroll-margin-top: 100px; }
+#flightForm :is(#aircraft_type:disabled, #registration:read-only) { color: var(--text-primary); opacity: 1; background: var(--surface-hover); }
+/* An extra Settings section must not push native tabs off a narrow viewport. */
+.tabs-header { flex-wrap: wrap; }
+.tabs-header .tab-button { min-height: 44px; }
+@media (max-width: 600px) {
+    .profile-settings .form-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .profile-actions .btn { flex: 1 1 auto; }
+}

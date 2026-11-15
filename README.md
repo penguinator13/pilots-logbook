@@ -1,4 +1,4 @@
-# Pilot's Logbook
+# Heli Logbook
 
 A self-hosted web application for pilots to track and manage their flight hours. Built with simplicity and mobile accessibility in mind.
 
@@ -12,6 +12,16 @@ A self-hosted web application for pilots to track and manage their flight hours.
 - **Mobile-Responsive**: Optimized for field entry on mobile devices
 - **Dark Mode**: Automatic dark mode support based on system preferences
 - **Single User Authentication**: Simple session-based login for personal use
+
+## Aircraft Profiles
+
+Open **Settings → Aircraft Profiles** to save a registration with its aircraft type, category and engine configuration. Nickname and operator are optional. Mark favourites for quicker selection, and optionally choose one default for fresh, blank new-flight forms.
+
+On **Add Flight**, search/select a profile to fill and lock the aircraft details. Choose **Manual entry** to keep those displayed details and edit them independently. Recent use is recorded when a flight is saved. Existing Aircraft Types management remains available separately.
+
+Saved flights retain their own aircraft-detail snapshots: changing or archiving a profile never rewrites those flights. Editing a linked historical flight shows **Saved flight details**, not the profile's latest values. Duplicating a flight with a changed, archived or unavailable profile safely switches to manual entry rather than substituting new details. Archive profiles to hide them from new-flight choices; enable **Include archived profiles** in Settings to restore them.
+
+The v1.9.0 migration is additive. It does not infer profiles or link/rewrite existing flights; create profiles deliberately after upgrading. Database backups include profiles. Older flight APIs and manual entry remain compatible.
 
 ## Screenshots
 

@@ -93,20 +93,22 @@ async function setupAccountTab() {
 function setupTabs() {
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
-
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const tabName = button.getAttribute('data-tab');
-
-            // Remove active class from all buttons and contents
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            tabContents.forEach(content => content.classList.remove('active'));
-
-            // Add active class to clicked button and corresponding content
-            button.classList.add('active');
-            document.getElementById(`${tabName}-tab`).classList.add('active');
+    const activate = (button) => {
+        const tabName = button.getAttribute('data-tab');
+        tabButtons.forEach(btn => {
+            btn.classList.toggle('active', btn === button);
+            btn.setAttribute('aria-pressed', String(btn === button));
         });
-    });
+        tabContents.forEach(content => content.classList.toggle('active', content.id === `${tabName}-tab`));
+    };
+    tabButtons.forEach(button => button.addEventListener('click', () => activate(button)));
+    const fromHash = () => {
+        const name = window.location.hash.slice(1);
+        const button = Array.from(tabButtons).find(btn => btn.getAttribute('data-tab') === name);
+        if (button) activate(button);
+    };
+    fromHash();
+    window.addEventListener('hashchange', fromHash);
 }
 
 function setupForms() {

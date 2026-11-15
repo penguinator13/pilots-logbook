@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/css/styles.css?v=1.8.2">
     <script src="/js/appearance.js?v=1.8.2"></script>
     <link rel="stylesheet" href="/css/cockpit.css?v=1.8.2">
+    <link rel="stylesheet" href="/css/aircraft-profiles.css?v=1.9.0">
 </head>
 <body>
     <!-- Navigation -->
@@ -42,6 +43,7 @@
         <div class="tabs-container">
             <div class="tabs-header">
                 <button class="tab-button active" data-tab="aircraft">Aircraft Types</button>
+                <button class="tab-button" data-tab="aircraft-profiles">Aircraft Profiles</button>
                 <button class="tab-button" data-tab="tags">Tags</button>
                 <button class="tab-button" data-tab="custom-fields">Custom Fields</button>
                 <button class="tab-button" data-tab="dashboard">Dashboard</button>
@@ -81,6 +83,63 @@
                         <div id="noAircraft" class="text-center mt-3 hidden">
                             <p class="text-muted">No aircraft types added yet. Add your first aircraft type above.</p>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Registration-specific profiles; legacy type management stays separate. -->
+            <div class="tab-content" id="aircraft-profiles-tab">
+                <div class="container-narrow profile-settings">
+                    <div class="card">
+                        <h2 class="card-header" id="profileEditorTitle">Add Aircraft Profile</h2>
+                        <p class="text-muted mb-3">Save a registration with its type, category and engine for quick flight entry. Editing or archiving a profile never rewrites saved flight details. Archiving removes it from new-flight choices and clears its default.</p>
+                        <form id="aircraftProfileForm">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="profileRegistration" class="form-label required">Registration</label>
+                                    <input maxlength="50" id="profileRegistration" class="form-input" required placeholder="e.g., C-GXXX" autocomplete="off" style="text-transform: uppercase;">
+                                </div>
+                                <div class="form-group">
+                                    <label for="profileType" class="form-label required">Aircraft Type</label>
+                                    <input maxlength="50" id="profileType" class="form-input" list="profileTypeOptions" required placeholder="e.g., H125">
+                                    <datalist id="profileTypeOptions"></datalist>
+                                    <div class="form-help">Choose a suggestion or enter a type. Aircraft Types remain managed separately.</div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="profileCategory" class="form-label">Aircraft Category</label>
+                                    <select id="profileCategory" class="form-select"><option>Helicopter</option><option>Aeroplane</option><option>Simulator</option></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="profileEngine" class="form-label">Engine Type</label>
+                                    <select id="profileEngine" class="form-select"><option>Single Engine</option><option>Multi Engine</option></select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="profileNickname" class="form-label">Nickname (optional)</label>
+                                    <input maxlength="100" id="profileNickname" class="form-input" placeholder="e.g., Training aircraft">
+                                </div>
+                                <div class="form-group">
+                                    <label for="profileOperator" class="form-label">Operator (optional)</label>
+                                    <input maxlength="100" id="profileOperator" class="form-input" placeholder="Operator name">
+                                </div>
+                            </div>
+                            <label class="profile-checkbox"><input type="checkbox" id="profileFavourite"> Favourite — show near the top of flight choices</label>
+                            <label class="profile-checkbox"><input type="checkbox" id="profileDefault"> Default for fresh, blank new flights only</label>
+                            <div class="profile-actions mt-3">
+                                <button type="submit" id="profileSaveBtn" class="btn btn-primary">Add Profile</button>
+                                <button type="button" id="profileCancelBtn" class="btn btn-secondary hidden">Cancel Edit</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card">
+                        <h2 class="card-header">Your Aircraft Profiles</h2>
+                        <p id="profileSettingsStatus" class="form-help mb-2" role="status" aria-live="polite">Loading aircraft profiles…</p>
+                        <button type="button" id="profileSettingsRetry" class="btn btn-secondary hidden">Refresh Profiles</button>
+                        <label class="profile-checkbox"><input type="checkbox" id="profileShowArchived"> Include archived profiles (restore from this view)</label>
+                        <div id="profileList"></div>
                     </div>
                 </div>
             </div>
@@ -667,6 +726,8 @@
     </style>
 
     <script src="/js/common.js"></script>
-    <script src="/js/settings.js"></script>
+    <script src="/js/settings.js?v=1.9.0"></script>
+    <script src="/js/aircraft-profiles.js?v=1.9.0"></script>
+    <script src="/js/aircraft-profile-settings.js?v=1.9.0"></script>
 </body>
 </html>

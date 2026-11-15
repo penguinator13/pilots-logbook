@@ -5,8 +5,10 @@ let isEditMode = false;
 let isDuplicateMode = false;
 let flightId = null;
 let customFields = [];
+let flightProfilePicker;
+let flightSaving = false;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Check authentication
     checkAuth();
 
@@ -15,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Load aircraft types using common.js helper
     const aircraftSelect = document.getElementById('aircraft_type');
-    loadAircraftTypes(aircraftSelect);
+    const aircraftTypesReady = loadAircraftTypes(aircraftSelect);
 
     // Load custom fields
     loadCustomFields();
@@ -29,6 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const duplicateId = urlParams.get('duplicate');
     isEditMode = !!flightId;
     isDuplicateMode = !!duplicateId;
+
+    flightProfilePicker = new window.FlightAircraftProfiles(isEditMode ? 'edit' : isDuplicateMode ? 'duplicate' : 'add', aircraftTypesReady);
+
+    if (isEditMode || isDuplicateMode) document.getElementById('flightForm').classList.add('hidden');
 
     if (isEditMode) {
         loadFlightData(flightId);
@@ -182,6 +188,9 @@ async function loadFlightData(id, isDuplicate = false) {
 
         const flight = await response.json();
 
+        // Await the type catalogue and restore stored snapshots (not live profile data).
+        await flightProfilePicker.restore(flight);
+
         // Populate form fields
         if (!isDuplicate) {
             // Only set flightId for edit mode, not duplicate
@@ -192,8 +201,7 @@ async function loadFlightData(id, isDuplicate = false) {
             const today = getLocalDateString();
             document.getElementById('date').value = today;
         }
-        document.getElementById('aircraft_type').value = flight.aircraft_type;
-        document.getElementById('registration').value = flight.registration || '';
+        // Aircraft snapshot fields were populated by the profile picker above.
         document.getElementById('pic').value = flight.pic || '';
         document.getElementById('copilot').value = flight.copilot || '';
         document.getElementById('departure').value = flight.departure || '';
@@ -245,7 +253,7 @@ async function loadFlightData(id, isDuplicate = false) {
         }
 
         // Show form
-        loading.classList.add('hidden');
+        if (loading) loading.classList.add('hidden');
         form.classList.remove('hidden');
 
         // After form is set up, recalculate total flight time
@@ -269,7 +277,7 @@ async function loadFlightData(id, isDuplicate = false) {
 
     } catch (error) {
         console.error('Load flight error:', error);
-        loading.classList.add('hidden');
+        if (loading) loading.classList.add('hidden');
         errorAlert.textContent = 'Failed to load flight data. The flight may not exist.';
         errorAlert.classList.remove('hidden');
     }
@@ -325,6 +333,18 @@ function setupForm() {
 }
 
 async function submitForm() {
+    if (flightSaving) return;
+    const form = document.getElementById('flightForm');
+    const priorInert = form.inert;
+    const controls = isEditMode ? Array.from(form.querySelectorAll('input, select, textarea, button'), field =>
+        [field, field.disabled, field.readOnly]) : [];
+    if (isEditMode) {
+        flightSaving = true;
+        // Inert also covers links and controls updated asynchronously by the picker.
+        form.inert = true;
+        form.setAttribute('aria-busy', 'true');
+        controls.forEach(([field]) => { field.disabled = true; });
+    }
     const submitBtn = document.getElementById('submitBtn');
     const submitText = document.getElementById('submitText');
     const successAlert = document.getElementById('successAlert');
@@ -341,6 +361,7 @@ async function submitForm() {
     try {
         // Collect form data
         const formData = {
+            aircraft_profile_id: flightProfilePicker.id,
             date: document.getElementById('date').value,
             aircraft_category: document.querySelector('input[name="aircraft_category"]:checked').value,
             engine_type: document.querySelector('input[name="engine_type"]:checked').value,
@@ -423,6 +444,8 @@ async function submitForm() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
             if (isEditMode) {
+                // Rebase the saved-details option after a profile change or manual detach.
+                await flightProfilePicker.restore(data);
                 // Stay on page for edit
                 submitBtn.disabled = false;
                 submitText.textContent = 'Update Flight';
@@ -443,5 +466,15 @@ async function submitForm() {
         submitBtn.disabled = false;
         submitText.textContent = isEditMode ? 'Update Flight' : 'Add Flight';
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+        if (isEditMode) {
+            controls.forEach(([field, disabled, readOnly]) => {
+                field.disabled = disabled;
+                if (readOnly !== undefined) field.readOnly = readOnly;
+            });
+            form.inert = priorInert;
+            form.setAttribute('aria-busy', 'false');
+            flightSaving = false;
+        }
     }
 }

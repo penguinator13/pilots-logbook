@@ -215,6 +215,9 @@ const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart
   r = await api('DELETE', `/api/flights/${flight.id}`);
   assert.strictEqual(r.status, 200);
 
+  require('./aircraft-profiles-migration.test')();
+  await require('./aircraft-profiles.test')({ api, expect, dbPath, todayStr });
+
   console.log('All smoke tests passed');
   child.kill('SIGTERM');
   await new Promise(r => child.on('exit', r));

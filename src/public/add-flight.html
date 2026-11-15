@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/css/styles.css?v=1.8.2">
     <script src="/js/appearance.js?v=1.8.2"></script>
     <link rel="stylesheet" href="/css/cockpit.css?v=1.8.2">
+    <link rel="stylesheet" href="/css/aircraft-profiles.css?v=1.9.0">
 </head>
 <body>
     <!-- Navigation -->
@@ -47,6 +48,19 @@
                     <input type="date" id="date" name="date" class="form-input" required>
                     <div class="form-help">Flight date cannot be in the future</div>
                 </div>
+
+                <!-- Aircraft profile selection does not rewrite historical flight snapshots. -->
+                <section class="aircraft-profile-picker form-group" aria-label="Aircraft profile">
+                    <label for="profileSearch" class="form-label">Find Aircraft Profile</label>
+                    <input type="search" id="profileSearch" class="form-input" placeholder="Search registration, type, nickname or operator" aria-controls="aircraftProfile" autocomplete="off">
+                    <label for="aircraftProfile" class="form-label">Aircraft Profile</label>
+                    <select id="aircraftProfile" class="form-select" aria-describedby="profileStatus">
+                        <option value="">Manual entry — keep displayed details</option>
+                    </select>
+                    <p id="profileStatus" class="form-help" role="status" aria-live="polite">Loading aircraft profiles… Manual entry is always available.</p>
+                    <button type="button" id="profileRetry" class="btn btn-secondary hidden">Retry Profiles</button>
+                    <a href="/settings.html#aircraft-profiles" class="profile-manage-link">Manage aircraft profiles</a>
+                </section>
 
                 <!-- Aircraft Category -->
                 <div class="form-group">
@@ -239,6 +253,8 @@
     </main>
 
     <script src="/js/common.js"></script>
-    <script src="/js/flight-form.js"></script>
+    <script src="/js/aircraft-profiles.js?v=1.9.0"></script>
+    <script src="/js/flight-aircraft-profiles.js?v=1.9.0"></script>
+    <script src="/js/flight-form.js?v=1.9.0"></script>
 </body>
 </html>

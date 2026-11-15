@@ -148,6 +148,7 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '1mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/flights/export', pdfExportRoutes);  // Must come before /api/flights
 app.use('/api/flights', flightRoutes);
+app.use('/api/aircraft-profiles', require('./routes/aircraft-profiles'));
 app.use('/api/aircraft', aircraftRoutes);
 app.use('/api/custom-fields', customFieldsRoutes);
 app.use('/api/tags', tagsRoutes);

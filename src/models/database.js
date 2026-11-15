@@ -100,6 +100,30 @@ function initializeDatabase() {
     addColumnIfMissing('flights', column, definition);
   }
 
+  // Individual aircraft are separate from the legacy saved type names.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS aircraft_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      registration TEXT NOT NULL COLLATE NOCASE,
+      aircraft_type TEXT NOT NULL,
+      aircraft_category TEXT NOT NULL DEFAULT 'Helicopter' CHECK(aircraft_category IN ('Helicopter', 'Aeroplane', 'Simulator')),
+      engine_type TEXT NOT NULL DEFAULT 'Single Engine' CHECK(engine_type IN ('Single Engine', 'Multi Engine')),
+      nickname TEXT NOT NULL DEFAULT '',
+      operator TEXT NOT NULL DEFAULT '',
+      favourite INTEGER NOT NULL DEFAULT 0 CHECK(favourite IN (0, 1)),
+      is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0, 1)),
+      archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0, 1)),
+      last_used_at TEXT,
+      UNIQUE(user_id, registration),
+      CHECK(archived = 0 OR is_default = 0)
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_aircraft_profiles_default
+      ON aircraft_profiles(user_id) WHERE is_default = 1;
+  `);
+
+  addColumnIfMissing('flights', 'aircraft_profile_id', 'INTEGER REFERENCES aircraft_profiles(id)');
+
   // Create aircraft_types table for managing saved aircraft
   db.exec(`
     CREATE TABLE IF NOT EXISTS aircraft_types (
