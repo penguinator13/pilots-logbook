@@ -5,7 +5,7 @@ window.AircraftProfiles = (() => {
         return profiles.find(profile => profile.is_default && !profile.archived) || null;
     }
     function profileLabel(profile) {
-        return `${profile.registration} — ${profile.aircraft_type}${profile.nickname ? ` · ${profile.nickname}` : ''}${profile.operator ? ` · ${profile.operator}` : ''}${profile.is_default ? ' (default)' : ''}`;
+        return `${profile.registration} — ${profile.aircraft_type}${profile.engine_model ? ` · ${profile.engine_model}` : ''}${profile.nickname ? ` · ${profile.nickname}` : ''}${profile.operator ? ` · ${profile.operator}` : ''}${profile.is_default ? ' (default)' : ''}`;
     }
     function groupedProfiles(profiles, query = '') {
         const active = profiles.filter(profile => !profile.archived && profileLabel(profile).toLowerCase().includes(query.trim().toLowerCase()));
@@ -16,7 +16,7 @@ window.AircraftProfiles = (() => {
             { label: 'Other aircraft', profiles: active.filter(p => !p.favourite && !p.last_used_at).sort(alphabetical) }
         ].filter(group => group.profiles.length);
     }
-    const detailFields = ['registration', 'aircraft_type', 'aircraft_category', 'engine_type'];
+    const detailFields = ['registration', 'aircraft_type', 'aircraft_category', 'engine_type', 'engine_model'];
     function savedSelection(flight, mode, profiles) {
         let id = flight.aircraft_profile_id || null;
         const profile = (profiles || []).find(p => p.id === id && !p.archived);

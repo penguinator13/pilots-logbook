@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/styles.css?v=1.8.2">
     <script src="/js/appearance.js?v=1.8.2"></script>
     <link rel="stylesheet" href="/css/cockpit.css?v=1.8.2">
-    <link rel="stylesheet" href="/css/aircraft-profiles.css?v=1.9.0">
+    <link rel="stylesheet" href="/css/aircraft-profiles.css?v=1.9.1">
 </head>
 <body>
     <!-- Navigation -->
@@ -125,6 +125,11 @@
                                     <label for="profileOperator" class="form-label">Operator (optional)</label>
                                     <input maxlength="100" id="profileOperator" class="form-input" placeholder="Operator name">
                                 </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="profileEngineModel" class="form-label">Engine model (optional)</label>
+                                <input type="text" id="profileEngineModel" maxlength="100" class="form-input" placeholder="e.g., 2B / 2B1">
+                                <div class="form-help">Engine model or variant, separate from Single Engine / Multi Engine.</div>
                             </div>
                             <label class="profile-checkbox"><input type="checkbox" id="profileFavourite"> Favourite — show near the top of flight choices</label>
                             <label class="profile-checkbox"><input type="checkbox" id="profileDefault"> Default for fresh, blank new flights only</label>
@@ -726,8 +731,8 @@
     </style>
 
     <script src="/js/common.js"></script>
-    <script src="/js/settings.js?v=1.9.0"></script>
-    <script src="/js/aircraft-profiles.js?v=1.9.0"></script>
-    <script src="/js/aircraft-profile-settings.js?v=1.9.0"></script>
+    <script src="/js/settings.js?v=1.9.1"></script>
+    <script src="/js/aircraft-profiles.js?v=1.9.1"></script>
+    <script src="/js/aircraft-profile-settings.js?v=1.9.1"></script>
 </body>
 </html>

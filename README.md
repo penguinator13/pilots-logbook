@@ -15,13 +15,13 @@ A self-hosted web application for pilots to track and manage their flight hours.
 
 ## Aircraft Profiles
 
-Open **Settings → Aircraft Profiles** to save a registration with its aircraft type, category and engine configuration. Nickname and operator are optional. Mark favourites for quicker selection, and optionally choose one default for fresh, blank new-flight forms.
+Open **Settings → Aircraft Profiles** to save a registration with its aircraft type, category and engine configuration. Nickname, operator and **Engine model** are optional. Engine model is free text (up to 100 characters), for example `2B` or `2B1` for AS350B3 variants; it is separate from the Single Engine / Multi Engine configuration. It appears in profile labels/search and flight details and is saved as part of each flight's historical snapshot. Mark favourites for quicker selection, and optionally choose one default for fresh, blank new-flight forms.
 
 On **Add Flight**, search/select a profile to fill and lock the aircraft details. Choose **Manual entry** to keep those displayed details and edit them independently. Recent use is recorded when a flight is saved. Existing Aircraft Types management remains available separately.
 
 Saved flights retain their own aircraft-detail snapshots: changing or archiving a profile never rewrites those flights. Editing a linked historical flight shows **Saved flight details**, not the profile's latest values. Duplicating a flight with a changed, archived or unavailable profile safely switches to manual entry rather than substituting new details. Archive profiles to hide them from new-flight choices; enable **Include archived profiles** in Settings to restore them.
 
-The v1.9.0 migration is additive. It does not infer profiles or link/rewrite existing flights; create profiles deliberately after upgrading. Database backups include profiles. Older flight APIs and manual entry remain compatible.
+The v1.9.1 engine-model migration is additive and idempotent: existing profiles and flights have a blank/unknown model, with no inferred values or rewritten history. Legacy flight updates that omit `engine_model` preserve its saved value. The v1.9.0 profile migration is additive. It does not infer profiles or link/rewrite existing flights; create profiles deliberately after upgrading. Database backups include profiles. Older flight APIs and manual entry remain compatible.
 
 ## Screenshots
 

@@ -313,7 +313,7 @@ function displayFlights(flights) {
     const html = flights.map(flight => `
         <tr>
             <td>${formatDate(flight.date)}</td>
-            <td>${escapeHtml(flight.aircraft_type)}</td>
+            <td>${escapeHtml(flight.aircraft_type)}${flight.engine_model ? `<div class="text-muted">Engine model: ${escapeHtml(flight.engine_model)}</div>` : ''}</td>
             <td class="registration-cell">${escapeHtml(flight.registration || '-')}</td>
             <td>${escapeHtml(truncate(flight.route || '-', 40))}</td>
             <td>${flight.flight_time.toFixed(1)} hrs</td>

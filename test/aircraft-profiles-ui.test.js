@@ -13,7 +13,7 @@ test('profile grouping uses server favourites/recent dates, active only, searcha
     const { groupedProfiles, profileLabel } = helpers();
     assert.equal(typeof groupedProfiles, 'function', 'grouping helper exists');
     const profiles = [
-        { id: 1, registration: 'C-AAA', aircraft_type: 'R44', favourite: true },
+        { id: 1, registration: 'C-AAA', aircraft_type: 'R44', engine_model: '2B1', favourite: true },
         { id: 2, registration: 'C-BBB', aircraft_type: 'H125', last_used_at: '2026-01-01' },
         { id: 3, registration: 'C-CCC', aircraft_type: 'R22', archived: true },
         { id: 4, registration: 'C-DDD', aircraft_type: 'H125', last_used_at: '2026-02-01', nickname: '<script>', operator: 'Rescue' },
@@ -22,7 +22,8 @@ test('profile grouping uses server favourites/recent dates, active only, searcha
     const groups = groupedProfiles(profiles, '');
     assert.equal(JSON.stringify(groups.map(group => [group.label, group.profiles.map(p => p.id)])), JSON.stringify([['Favourites', [1]], ['Recently used', [4, 2]], ['Other aircraft', [5]]]));
     assert.equal(groupedProfiles(profiles, 'rescue')[0].profiles[0].id, 4);
-    assert.match(profileLabel(profiles[0]), /C-AAA.*R44/);
+    assert.match(profileLabel(profiles[0]), /C-AAA.*R44.*2B1/);
+    assert.equal(groupedProfiles(profiles, '2b1')[0].profiles[0].id, 1);
 });
 
 test('saved flight policy retains edit snapshots and detaches unsafe duplicate associations', () => {
@@ -39,7 +40,7 @@ test('saved flight policy retains edit snapshots and detaches unsafe duplicate a
         assert.equal(duplicate.id, null);
         assert.equal(duplicate.details.registration, 'C-OLD');
     }
-    for (const field of ['registration', 'aircraft_type', 'aircraft_category', 'engine_type']) {
+    for (const field of ['registration', 'aircraft_type', 'aircraft_category', 'engine_type', 'engine_model']) {
         assert.equal(savedSelection(flight, 'duplicate', [{ ...same, [field]: 'changed' }]).id, null);
     }
     assert.equal(savedSelection(flight, 'duplicate', [same]).id, 7);
@@ -64,7 +65,7 @@ class Element {
     get options() { return this.children.flatMap(child => child.label ? child.children : [child]); }
 }
 function pickerEnvironment(profiles, mode = 'add', fail = false, typesReady = Promise.resolve()) {
-    const ids = Object.fromEntries(['flightForm', 'aircraftProfile', 'profileSearch', 'profileStatus', 'profileRetry', 'aircraft_type', 'registration'].map(id => [id, new Element()]));
+    const ids = Object.fromEntries(['flightForm', 'aircraftProfile', 'profileSearch', 'profileStatus', 'profileRetry', 'aircraft_type', 'registration', 'engine_model'].map(id => [id, new Element()]));
     const radios = [new Element('Helicopter'), new Element('Aeroplane'), new Element('Simulator'), new Element('Single Engine'), new Element('Multi Engine')];
     radios[0].checked = radios[3].checked = true;
     ids.flightForm.elements = [];
@@ -77,11 +78,13 @@ function pickerEnvironment(profiles, mode = 'add', fail = false, typesReady = Pr
     return { picker: new context.window.FlightAircraftProfiles(mode, typesReady), ids, radios, context, document, setFailure: value => { fail = value; } };
 }
 test('native flight picker autofills and locks profile fields; Manual keeps their displayed values', async () => {
-    const profile = { id: 8, registration: 'C-TEST', aircraft_type: 'H125', aircraft_category: 'Helicopter', engine_type: 'Multi Engine', is_default: true };
+    const profile = { id: 8, registration: 'C-TEST', aircraft_type: 'H125', aircraft_category: 'Helicopter', engine_type: 'Multi Engine', engine_model: '2B1', is_default: true };
     const { picker, ids, radios } = pickerEnvironment([profile]);
     await picker.ready;
     assert.equal(picker.id, 8);
     assert.equal(ids.registration.value, 'C-TEST');
+    assert.equal(ids.engine_model.value, '2B1');
+    assert.equal(ids.engine_model.readOnly, picker.id !== null);
     assert.equal(ids.aircraft_type.value, 'H125');
     assert.equal(ids.aircraft_type.disabled, true);
     assert.equal(radios[4].checked, true);
@@ -90,6 +93,8 @@ test('native flight picker autofills and locks profile fields; Manual keeps thei
     ids.aircraftProfile.dispatch('change');
     assert.equal(picker.id, null);
     assert.equal(ids.registration.value, 'C-TEST');
+    assert.equal(ids.engine_model.value, '2B1');
+    assert.equal(ids.engine_model.readOnly, picker.id !== null);
     assert.equal(ids.aircraft_type.disabled, false);
     assert.equal(radios[0].disabled, false);
 });
@@ -99,20 +104,22 @@ test('both flight pages load native profile controls and save integer/null assoc
         const html = fs.readFileSync(path.join(__dirname, '../src/public', page), 'utf8');
         assert.match(html, /<select[^>]*id="aircraftProfile"/, `${page} has native profile select`);
         assert.match(html, /id="profileSearch"/);
+        assert.match(html, /<input[^>]*id="engine_model"[^>]*maxlength="100"/);
         assert.match(html, /flight-aircraft-profiles\.js/);
     }
     const form = fs.readFileSync(path.join(__dirname, '../src/public/js/flight-form.js'), 'utf8');
     assert.match(form, /aircraft_profile_id:\s*flightProfilePicker\.id/);
     assert.match(form, /await flightProfilePicker\.restore\(flight\)/);
+    assert.match(form, /engine_model:\s*document\.getElementById\('engine_model'\)\.value\.trim\(\)/);
 });
 
 function settingsEnvironment(initial = []) {
-    const names = ['aircraftProfileForm', 'profileEditorTitle', 'profileRegistration', 'profileType', 'profileCategory', 'profileEngine', 'profileNickname', 'profileOperator', 'profileFavourite', 'profileDefault', 'profileSaveBtn', 'profileCancelBtn', 'profileShowArchived', 'profileList', 'profileSettingsStatus', 'profileSettingsRetry', 'profileTypeOptions'];
+    const names = ['aircraftProfileForm', 'profileEditorTitle', 'profileRegistration', 'profileType', 'profileCategory', 'profileEngine', 'profileEngineModel', 'profileNickname', 'profileOperator', 'profileFavourite', 'profileDefault', 'profileSaveBtn', 'profileCancelBtn', 'profileShowArchived', 'profileList', 'profileSettingsStatus', 'profileSettingsRetry', 'profileTypeOptions'];
     const ids = Object.fromEntries(names.map(id => [id, new Element()]));
-    ids.aircraftProfileForm.reset = () => { names.filter(id => /^profile(Registration|Type|Nickname|Operator)$/.test(id)).forEach(id => { ids[id].value = ''; }); ids.profileCategory.value = 'Helicopter'; ids.profileEngine.value = 'Single Engine'; ids.profileFavourite.checked = ids.profileDefault.checked = false; };
+    ids.aircraftProfileForm.reset = () => { names.filter(id => /^profile(Registration|Type|EngineModel|Nickname|Operator)$/.test(id)).forEach(id => { ids[id].value = ''; }); ids.profileCategory.value = 'Helicopter'; ids.profileEngine.value = 'Single Engine'; ids.profileFavourite.checked = ids.profileDefault.checked = false; };
     ids.profileRegistration.focus = () => {};
     ids.aircraftProfileForm.scrollIntoView = () => {};
-    ids.aircraftProfileForm.querySelectorAll = () => names.filter(id => /^profile(Registration|Type|Category|Engine|Nickname|Operator|Favourite|Default)$/.test(id)).map(id => ids[id]);
+    ids.aircraftProfileForm.querySelectorAll = () => names.filter(id => /^profile(Registration|Type|Category|Engine|EngineModel|Nickname|Operator|Favourite|Default)$/.test(id)).map(id => ids[id]);
     let writeGate;
     let profiles = initial.map(p => ({ ...p }));
     const calls = [];
@@ -141,6 +148,7 @@ test('profile settings adds explicit server-backed flags, reloads saved data and
     await settings.ready;
     ids.profileRegistration.value = 'C-TEST'; ids.profileType.value = 'H125';
     ids.profileCategory.value = 'Helicopter'; ids.profileEngine.value = 'Multi Engine';
+    ids.profileEngineModel.value = ' 2B / 2B1 ';
     ids.profileNickname.value = '<img onerror=alert(1)>'; ids.profileOperator.value = 'Rescue';
     ids.profileFavourite.checked = ids.profileDefault.checked = true;
     await settings.save();
@@ -148,6 +156,7 @@ test('profile settings adds explicit server-backed flags, reloads saved data and
     assert.ok(written);
     const body = JSON.parse(written.body);
     assert.equal(body.favourite, true); assert.equal(body.is_default, true); assert.equal(body.archived, false);
+    assert.equal(body.engine_model, '2B / 2B1');
     assert.equal(body.nickname, '<img onerror=alert(1)>');
     assert.ok(calls.slice(calls.indexOf(written) + 1).some(call => !call.method && call.url.includes('include_archived=true')), 'read back after save');
     settings.edit(settings.profiles[0]);
@@ -180,6 +189,7 @@ test('settings archive clears default, restore stays non-default and active/all 
     const html = fs.readFileSync(path.join(__dirname, '../src/public/settings.html'), 'utf8');
     assert.match(html, /data-tab="aircraft-profiles"/);
     assert.match(html, /id="aircraftProfileForm"/);
+    assert.match(html, /id="profileEngineModel"[^>]*maxlength="100"/);
     assert.match(html, /aircraft-profile-settings\.js/);
 });
 
@@ -192,6 +202,7 @@ test('profile settings optional text remains API-valid empty strings', async () 
     const payload = JSON.parse(calls.find(call => call.method === 'POST').body);
     assert.equal(payload.nickname, '');
     assert.equal(payload.operator, '');
+    assert.equal(payload.engine_model, '');
 });
 
 test('profile fetch failure still waits for type catalogue so historical snapshots cannot be erased by its late response', async () => {
@@ -226,7 +237,7 @@ test('profile settings deep link opens the new tab and shared profile styles sup
 });
 
 test('flight picker does not apply delayed default after manual intent, editing, duplication or nonblank data', async () => {
-    const profile = { id: 8, registration: 'C-TEST', aircraft_type: 'H125', aircraft_category: 'Helicopter', engine_type: 'Multi Engine', is_default: true };
+    const profile = { id: 8, registration: 'C-TEST', aircraft_type: 'H125', aircraft_category: 'Helicopter', engine_type: 'Multi Engine', engine_model: '2B1', is_default: true };
     for (const mode of ['edit', 'duplicate']) {
         const { picker } = pickerEnvironment([profile], mode);
         await picker.ready;
@@ -290,6 +301,7 @@ test('row flag actions synchronize affected editor flags without discarding draf
     settings.edit(settings.profiles[0]);
     ids.profileNickname.value = 'Unsaved nickname';
     ids.profileOperator.value = 'Unsaved operator';
+    ids.profileEngineModel.value = 'Unsaved 2B1';
     ids.profileDefault.checked = true; // unrelated local draft flag
     await settings.changeFlags(settings.profiles[0], { favourite: true });
     assert.equal(ids.profileFavourite.checked, true);
@@ -303,6 +315,7 @@ test('row flag actions synchronize affected editor flags without discarding draf
     assert.equal(settings.editing.is_default, false);
     assert.equal(ids.profileNickname.value, 'Unsaved nickname');
     assert.equal(ids.profileOperator.value, 'Unsaved operator');
+    assert.equal(ids.profileEngineModel.value, 'Unsaved 2B1');
     await settings.save();
     const payload = JSON.parse(calls.filter(call => call.method === 'PUT').at(-1).body);
     assert.equal(payload.favourite, true);
@@ -339,7 +352,7 @@ test('edit submission freezes manual/profile intent until delayed PUT and picker
         for (const fail of [false, true]) {
             const env = pickerEnvironment([], 'edit');
             const { picker, ids, radios, context, document } = env;
-            const flight = { aircraft_profile_id: linked ? 6 : null, registration: 'C-OLD', aircraft_type: 'R44', aircraft_category: 'Helicopter', engine_type: 'Single Engine' };
+            const flight = { engine_model: '2B', aircraft_profile_id: linked ? 6 : null, registration: 'C-OLD', aircraft_type: 'R44', aircraft_category: 'Helicopter', engine_type: 'Single Engine' };
             await picker.restore(flight);
             for (const id of ['submitBtn', 'submitText', 'successAlert', 'errorAlert', 'date', 'pic', 'copilot', 'departure', 'arrival', 'route', 'day_pic', 'night_pic', 'day_dual', 'night_dual', 'day_sic', 'night_sic', 'day_cmnd_practice', 'night_cmnd_practice', 'takeoffs_day', 'takeoffs_night', 'landings_day', 'landings_night']) ids[id] = new Element();
             ids.date.value = '2020-01-01';
@@ -358,13 +371,16 @@ test('edit submission freezes manual/profile intent until delayed PUT and picker
             context.testPicker = picker;
             vm.runInNewContext("isEditMode = true; flightId = '9'; flightProfilePicker = testPicker;", context);
             let respond, finishRestore;
-            context.fetch = () => new Promise(resolve => { respond = resolve; });
+            let submitted;
+            context.fetch = (url, options) => { submitted = JSON.parse(options.body); return new Promise(resolve => { respond = resolve; }); };
             const restoring = new Promise(resolve => { finishRestore = resolve; });
             const originalRestore = picker.restore.bind(picker);
             picker.restore = async data => { await restoring; await originalRestore(data); };
             const before = controls.map(field => [field.disabled, field.readOnly]);
             const saving = context.submitForm();
+            assert.equal(submitted.engine_model, '2B');
             const frozenDuringPut = controls.every(field => field.disabled);
+            assert.equal(ids.engine_model.disabled, true);
             // Native user interactions cannot select Manual or enter a new registration while frozen.
             if (!ids.aircraftProfile.disabled) { ids.aircraftProfile.value = ''; ids.aircraftProfile.dispatch('change'); }
             if (!ids.registration.disabled && !ids.registration.readOnly) ids.registration.value = 'C-NEW';
@@ -376,10 +392,25 @@ test('edit submission freezes manual/profile intent until delayed PUT and picker
             assert.equal(frozenDuringPut, true, 'all controls, including Manual selector and retry, disabled during PUT');
             assert.equal(frozenDuringRestore, true, 'form stays frozen through async picker rebase');
             assert.equal(ids.registration.value, 'C-OLD');
+            assert.equal(ids.engine_model.value, '2B');
+            assert.equal(ids.engine_model.readOnly, linked);
             assert.deepEqual(controls.map(field => [field.disabled, field.readOnly]), before);
             assert.equal(!!ids.flightForm.inert, false);
         }
     }
+});
+
+test('flight listing displays supplied engine models as escaped text and omits unknown models', () => {
+    const table = new Element();
+    const context = { document: { addEventListener() {}, getElementById: () => table },
+        formatDate: value => value, truncate: value => value,
+        escapeHtml: value => String(value).replaceAll('<', '&lt;').replaceAll('>', '&gt;') };
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/public/js/flights-list.js'), 'utf8'), context);
+    context.displayFlights([{ id: 1, aircraft_type: 'AS350B3', engine_model: '<2B1>', flight_time: 1 }]);
+    assert.match(table.innerHTML, /Engine model: &lt;2B1&gt;/);
+    assert.doesNotMatch(table.innerHTML, /<2B1>/);
+    context.displayFlights([{ id: 1, aircraft_type: 'AS350B3', engine_model: '', flight_time: 1 }]);
+    assert.doesNotMatch(table.innerHTML, /Engine model:/);
 });
 
 test('default is eligible only on a fresh untouched blank add form', () => {

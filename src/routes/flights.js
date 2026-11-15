@@ -159,6 +159,9 @@ function resolveAircraftProfile(req, res, next) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return res.status(400).json({ error: 'Expected an object' });
   }
+  if (Object.hasOwn(body, 'engine_model') && (typeof body.engine_model !== 'string' || body.engine_model.length > 100 || /[\x00-\x1f\x7f]/.test(body.engine_model))) {
+    return res.status(400).json({ error: 'engine_model must be a string of at most 100 characters without control characters' });
+  }
   let existing;
   if (req.method === 'PUT') {
     existing = db.prepare('SELECT * FROM flights WHERE id = ? AND user_id = ?').get(req.params.id, req.session.userId);
@@ -177,9 +180,9 @@ function resolveAircraftProfile(req, res, next) {
       if (!snapshot) return res.status(400).json({ error: 'Active aircraft profile not found' });
     }
   }
-  req.body = { ...body, aircraft_profile_id: id };
+  req.body = { ...body, aircraft_profile_id: id, engine_model: Object.hasOwn(body, 'engine_model') ? body.engine_model : (existing?.engine_model ?? '') };
   if (snapshot) {
-    for (const key of ['aircraft_type', 'registration', 'aircraft_category', 'engine_type']) req.body[key] = snapshot[key];
+    for (const key of ['aircraft_type', 'registration', 'aircraft_category', 'engine_type', 'engine_model']) req.body[key] = snapshot[key];
   }
   next();
 }
@@ -197,7 +200,7 @@ router.get('/', (req, res) => {
   const aircraftFilter = req.query.aircraft_type || '';
 
   try {
-    let query = 'SELECT id, aircraft_profile_id, date, aircraft_type, registration, pilot_in_command, copilot_student, flight_details as route, flight_time_hours as flight_time, aircraft_category, departure, arrival FROM flights WHERE user_id = ?';
+    let query = 'SELECT id, aircraft_profile_id, date, aircraft_type, registration, pilot_in_command, copilot_student, flight_details as route, flight_time_hours as flight_time, aircraft_category, engine_model, departure, arrival FROM flights WHERE user_id = ?';
     let countQuery = 'SELECT COUNT(*) as total FROM flights WHERE user_id = ?';
     const params = [req.session.userId];
 
@@ -235,7 +238,7 @@ router.get('/:id', (req, res) => {
              day_cmnd_practice, night_cmnd_practice,
              longline_hours, mountain_hours, instructor_hours, crosscountry_hours,
              night_vision_hours, instrument_hours, simulated_instrument_hours, ground_instrument_hours,
-             aircraft_category, engine_type,
+             aircraft_category, engine_type, engine_model,
              takeoffs_day, takeoffs_night, landings_day, landings_night,
              departure, arrival
       FROM flights WHERE id = ? AND user_id = ?
@@ -398,6 +401,7 @@ router.post('/', resolveAircraftProfile, (req, res) => {
     night_cmnd_practice,
     aircraft_category,
     engine_type,
+    engine_model,
     takeoffs_day,
     takeoffs_night,
     landings_day,
@@ -424,10 +428,10 @@ router.post('/', resolveAircraftProfile, (req, res) => {
         copilot_student, flight_details, flight_time_hours,
         day_pic, night_pic, day_dual, night_dual, day_sic, night_sic,
         day_cmnd_practice, night_cmnd_practice,
-        aircraft_category, engine_type,
+        aircraft_category, engine_type, engine_model,
         takeoffs_day, takeoffs_night, landings_day, landings_night,
         departure, arrival
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertCustomField = db.prepare(`
       INSERT INTO custom_field_values (flight_id, field_id, value)
@@ -455,6 +459,7 @@ router.post('/', resolveAircraftProfile, (req, res) => {
         parseHours(night_cmnd_practice),
         aircraft_category || 'Helicopter',
         engine_type || 'Single Engine',
+        engine_model.trim(),
         parseCount(takeoffs_day),
         parseCount(takeoffs_night),
         parseCount(landings_day),
@@ -499,6 +504,7 @@ router.put('/:id', resolveAircraftProfile, (req, res) => {
     night_cmnd_practice,
     aircraft_category,
     engine_type,
+    engine_model,
     takeoffs_day,
     takeoffs_night,
     landings_day,
@@ -530,7 +536,7 @@ router.put('/:id', resolveAircraftProfile, (req, res) => {
         copilot_student = ?, flight_details = ?, flight_time_hours = ?,
         day_pic = ?, night_pic = ?, day_dual = ?, night_dual = ?,
         day_sic = ?, night_sic = ?, day_cmnd_practice = ?, night_cmnd_practice = ?,
-        aircraft_category = ?, engine_type = ?,
+        aircraft_category = ?, engine_type = ?, engine_model = ?,
         takeoffs_day = ?, takeoffs_night = ?, landings_day = ?, landings_night = ?,
         departure = ?, arrival = ?,
         updated_at = CURRENT_TIMESTAMP
@@ -562,6 +568,7 @@ router.put('/:id', resolveAircraftProfile, (req, res) => {
         parseHours(night_cmnd_practice),
         aircraft_category || 'Helicopter',
         engine_type || 'Single Engine',
+        engine_model.trim(),
         parseCount(takeoffs_day),
         parseCount(takeoffs_night),
         parseCount(landings_day),

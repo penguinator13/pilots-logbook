@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/styles.css?v=1.8.2">
     <script src="/js/appearance.js?v=1.8.2"></script>
     <link rel="stylesheet" href="/css/cockpit.css?v=1.8.2">
-    <link rel="stylesheet" href="/css/aircraft-profiles.css?v=1.9.0">
+    <link rel="stylesheet" href="/css/aircraft-profiles.css?v=1.9.1">
 </head>
 <body>
     <!-- Navigation -->
@@ -57,7 +57,7 @@
                 <!-- Aircraft profile selection does not rewrite historical flight snapshots. -->
                 <section class="aircraft-profile-picker form-group" aria-label="Aircraft profile">
                     <label for="profileSearch" class="form-label">Find Aircraft Profile</label>
-                    <input type="search" id="profileSearch" class="form-input" placeholder="Search registration, type, nickname or operator" aria-controls="aircraftProfile" autocomplete="off">
+                    <input type="search" id="profileSearch" class="form-input" placeholder="Search registration, type, engine model, nickname or operator" aria-controls="aircraftProfile" autocomplete="off">
                     <label for="aircraftProfile" class="form-label">Aircraft Profile</label>
                     <select id="aircraftProfile" class="form-select" aria-describedby="profileStatus">
                         <option value="">Manual entry — keep displayed details</option>
@@ -110,6 +110,12 @@
                         <option value="B206">B206</option>
                         <option value="Bell 212">Bell 212</option>
                     </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="engine_model" class="form-label">Engine model (optional)</label>
+                    <input type="text" id="engine_model" name="engine_model" maxlength="100" class="form-input" placeholder="e.g., 2B / 2B1">
+                    <div class="form-help">Engine model or variant, separate from Single Engine / Multi Engine.</div>
                 </div>
 
                 <!-- Registration -->
@@ -258,8 +264,8 @@
     </main>
 
     <script src="/js/common.js"></script>
-    <script src="/js/aircraft-profiles.js?v=1.9.0"></script>
-    <script src="/js/flight-aircraft-profiles.js?v=1.9.0"></script>
-    <script src="/js/flight-form.js?v=1.9.0"></script>
+    <script src="/js/aircraft-profiles.js?v=1.9.1"></script>
+    <script src="/js/flight-aircraft-profiles.js?v=1.9.1"></script>
+    <script src="/js/flight-form.js?v=1.9.1"></script>
 </body>
 </html>

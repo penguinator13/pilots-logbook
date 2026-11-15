@@ -122,6 +122,8 @@ function initializeDatabase() {
       ON aircraft_profiles(user_id) WHERE is_default = 1;
   `);
 
+  addColumnIfMissing('aircraft_profiles', 'engine_model', "TEXT NOT NULL DEFAULT ''");
+  addColumnIfMissing('flights', 'engine_model', "TEXT NOT NULL DEFAULT ''");
   addColumnIfMissing('flights', 'aircraft_profile_id', 'INTEGER REFERENCES aircraft_profiles(id)');
 
   // Create aircraft_types table for managing saved aircraft
