@@ -51,6 +51,7 @@ class LogbookPDFGenerator {
    */
   generate(flights) {
     const doc = new PDFDocument({
+      info: { Title: 'Heli Logbook', Creator: 'Heli Logbook' },
       size: 'A4',
       layout: 'landscape',
       autoFirstPage: false,

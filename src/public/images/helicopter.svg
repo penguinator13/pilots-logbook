@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 64" fill="none">
+  <title>Helicopter</title>
+  <!-- Main rotor, mast, glazed cabin, tail boom and landing skids. -->
+  <g stroke="#32b8a6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 10h51M40 10v12M33 22h14"/>
+    <path d="M29 26h17c10 0 20 9 20 17 0 3-3 5-7 5H32c-6 0-10-4-10-9v-4L9 30V20l7 3 6 12" fill="#142737"/>
+    <path d="M47 27v12h16M22 39h-8M35 48v7m21-7v7M27 55h38l5-3"/>
+    <circle cx="10" cy="24" r="6" fill="#142737"/>
+    <path d="m7 21 6 6m0-6-6 6" stroke-width="2"/>
+  </g>
+  <path d="M51 30v5h7c-2-2-4-4-7-5Z" fill="#b8ece3"/>
+  <path d="M19 10h10" stroke="#e6b466" stroke-width="3" stroke-linecap="round"/>
+</svg>

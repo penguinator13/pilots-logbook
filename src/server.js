@@ -175,7 +175,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 const server = app.listen(PORT, HOST, () => {
-  console.log(`Pilot's Logbook v${require('../package.json').version} listening on http://${HOST}:${PORT}`);
+  console.log(`Heli Logbook v${require('../package.json').version} listening on http://${HOST}:${PORT}`);
 });
 
 // Graceful shutdown: stop accepting connections, checkpoint + close SQLite

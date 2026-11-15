@@ -1,4 +1,4 @@
-/* Cockpit: opt-in only. Removing/changing data-appearance restores the original.
+/* Helicopter cockpit: changing data-appearance restores the Original theme.
    No global reset, font downloads, generated text, or visibility-state overrides. */
 html[data-appearance="cockpit"] {
     color-scheme: light;
@@ -62,15 +62,11 @@ html[data-appearance="cockpit"] .navbar-brand {
     letter-spacing: -0.035em;
     white-space: nowrap;
 }
-html[data-appearance="cockpit"] .navbar-brand::before {
-    content: "";
-    width: 8px;
-    height: 24px;
-    margin-right: 12px;
-    border-top: 2px solid var(--cockpit-teal);
-    border-bottom: 2px solid var(--cockpit-teal);
-    background: linear-gradient(90deg, transparent 3px, var(--cockpit-teal) 3px, var(--cockpit-teal) 5px, transparent 5px);
-}
+/* The local rotorcraft mark replaces the generic instrument stripe. */
+html[data-appearance="cockpit"] .navbar-brand { gap: 10px; }
+html[data-appearance="cockpit"] .rotorcraft-label { color: var(--text-secondary); }
+html[data-appearance="cockpit"] .dashboard-header { padding-top: 4px; }
+html[data-appearance="cockpit"] .login-mark { margin-left: 0; }
 html[data-appearance="cockpit"] .navbar-brand:hover { color: var(--cockpit-teal); }
 html[data-appearance="cockpit"] .navbar-nav { gap: 4px; margin-left: auto; }
 html[data-appearance="cockpit"] .navbar-nav a {
@@ -180,12 +176,11 @@ html[data-appearance="cockpit"] .modal-content { max-height: calc(100dvh - 32px)
 html[data-appearance="cockpit"] .modal-close { top: 4px; right: 4px; }
 html[data-appearance="cockpit"] .toast-container { max-width: calc(100vw - 32px); }
 
-/* Quiet approach-chart texture, with no imagery or external assets. */
+/* A clean panel keeps the focus on sign-in rather than wallpaper. */
 html[data-appearance="cockpit"] .login-container {
     min-height: 100svh;
     padding: 32px 20px;
-    background-image: linear-gradient(rgb(85 120 143 / 5%) 1px, transparent 1px), linear-gradient(90deg, rgb(85 120 143 / 5%) 1px, transparent 1px);
-    background-size: 48px 48px;
+    background: var(--background);
 }
 html[data-appearance="cockpit"] .login-card { max-width: 420px; padding: 36px; background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--primary-color); border-radius: 12px; box-shadow: var(--shadow-lg); }
 html[data-appearance="cockpit"] .login-header { text-align: left; margin-bottom: 28px; }
@@ -229,7 +224,7 @@ html[data-appearance="cockpit"] .login-card .theme-switch { margin-top: 20px; wi
     html[data-appearance="cockpit"] .container { padding-inline: 18px; }
     html[data-appearance="cockpit"] .navbar-content { gap: 8px; flex-wrap: wrap; }
     html[data-appearance="cockpit"] .navbar-brand { margin-right: auto; font-size: 16px; }
-    html[data-appearance="cockpit"] .navbar-brand::before { margin-right: 8px; }
+    html[data-appearance="cockpit"] .navbar-brand { gap: 6px; }
     html[data-appearance="cockpit"] .navbar-toggle { order: 3; }
     html[data-appearance="cockpit"] .navbar .theme-switch { max-width: 110px; font-size: 12px; padding-inline: 8px; }
     html[data-appearance="cockpit"] .navbar-nav { background: #142737; border-color: #344d5d; gap: 4px; align-items: stretch; padding: 12px 18px; }

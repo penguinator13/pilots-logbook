@@ -72,6 +72,14 @@ const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart
   assert.strictEqual(r.status, 302);
   r = await api('GET', '/login.html');
   assert.strictEqual(r.status, 200);
+  const loginHtml = await r.text();
+  assert.ok(loginHtml.includes('<title>Login - Heli Logbook</title>'), 'login document title uses Heli Logbook');
+  assert.match(loginHtml, /class="login-title">Heli Logbook<\/h1>/, 'login heading uses Heli Logbook');
+  assert.match(loginHtml, /src="\/images\/helicopter.svg\?v=1.8.2"/, 'login displays the local helicopter mark');
+  r = await api('GET', '/images/helicopter.svg?v=1.8.2');
+  assert.strictEqual(r.status, 200, 'helicopter identity asset is public');
+  assert.match(r.headers.get('content-type'), /image\/svg\+xml/);
+  assert.match(await r.text(), /<svg[\s>]/, 'identity asset is SVG, not an emoji');
   r = await api('GET', '/css/styles.css');
   assert.strictEqual(r.status, 200);
   r = await api('GET', '/api/flights');
@@ -95,6 +103,18 @@ const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart
   assert.ok(csp.includes('https://cdn.jsdelivr.net'), 'CSP must allow Chart.js CDN');
   r = await api('GET', '/login.html');
   assert.strictEqual(r.status, 302, 'login page redirects when already signed in');
+
+  // Authenticated HTML is branded before JS, in both appearance modes.
+  for (const page of ['dashboard', 'add-flight', 'edit-flight', 'flights', 'aircraft', 'settings']) {
+    const html = await expect(await api('GET', `/${page}.html`), 200, page);
+    assert.match(html, /<title>[^<]+ - Heli Logbook<\/title>/, `${page} document title`);
+    assert.match(html, /class="navbar-brand">[\s\S]*?<span>Heli Logbook<\/span><\/a>/, `${page} navigation brand`);
+    assert.match(html, /class="brand-mark" src="\/images\/helicopter.svg\?v=1.8.2"/, `${page} helicopter mark`);
+    assert.ok(html.includes('/css/styles.css?v=1.8.2'), `${page} base style cache bust`);
+    assert.ok(html.includes('/css/cockpit.css?v=1.8.2'), `${page} cockpit cache bust`);
+    assert.ok(!html.includes("Pilot's Logbook"), `${page} contains no old brand`);
+    if (page === 'dashboard') assert.ok(html.includes('Helicopter operations'), 'dashboard rotorcraft identity');
+  }
 
   // Aircraft + custom field setup
   r = await api('POST', '/api/aircraft', { name: 'AS350 B2' });
@@ -157,6 +177,9 @@ const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart
   r = await api('GET', '/api/flights/export/pdf');
   assert.strictEqual(r.status, 200);
   assert.strictEqual(r.headers.get('content-type'), 'application/pdf');
+  const pdf = Buffer.from(await r.arrayBuffer()).toString('latin1');
+  assert.ok(pdf.startsWith('%PDF-'), 'export is an actual PDF document');
+  assert.ok(pdf.includes('(Heli Logbook)'), 'PDF metadata title uses Heli Logbook');
   r = await api('GET', '/api/flights/export/summary');
   assert.strictEqual(r.status, 200);
 
