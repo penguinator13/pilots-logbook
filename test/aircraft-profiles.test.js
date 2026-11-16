@@ -3,10 +3,12 @@ const assert = require('assert');
 module.exports = async function testAircraftProfiles({ api, expect, dbPath, todayStr }) {
   const profile = await expect(await api('POST', '/api/aircraft-profiles', {
     registration: ' c-gabc ', aircraft_type: 'AS350 B2', aircraft_category: 'Helicopter',
-    engine_type: 'Single Engine', engine_model: ' 2B ', nickname: 'Workhorse', operator: 'Test Air', favourite: true, is_default: true
+    powerplant_type: 'Turbine', helicopter_class: 'Intermediate', engine_type: 'Single Engine', engine_model: ' 2B ', nickname: 'Workhorse', operator: 'Test Air', favourite: true, is_default: true
   }), 201, 'create aircraft profile');
   assert.strictEqual(profile.registration, 'C-GABC');
   assert.strictEqual(profile.engine_model, '2B');
+  assert.strictEqual(profile.powerplant_type, 'Turbine');
+  assert.strictEqual(profile.helicopter_class, 'Intermediate');
   assert.strictEqual(profile.favourite, true);
   assert.strictEqual(profile.is_default, true);
   assert.strictEqual(profile.archived, false);
@@ -17,6 +19,8 @@ module.exports = async function testAircraftProfiles({ api, expect, dbPath, toda
     registration: 'C-ZZZZ', aircraft_type: 'B206', favourite: true, is_default: true
   }), 201, 'second default replaces first');
   assert.strictEqual(second.engine_model, '');
+  assert.strictEqual(second.powerplant_type, '');
+  assert.strictEqual(second.helicopter_class, '');
   let all = await expect(await api('GET', '/api/aircraft-profiles'), 200);
   assert.deepStrictEqual(all.map(p => p.id), [second.id, profile.id]);
   assert.strictEqual(all.filter(p => p.is_default).length, 1);
@@ -50,8 +54,8 @@ module.exports = async function testAircraftProfiles({ api, expect, dbPath, toda
   }
   await expect(await api('PUT', '/api/aircraft-profiles/12x', {}), 400);
   await expect(await api('PUT', '/api/aircraft-profiles/999999', {}), 404);
-  const flightBody = { date: todayStr, day_pic: 1, aircraft_type: 'FAKE', registration: 'FAKE', aircraft_category: 'Simulator', engine_type: 'Multi Engine', engine_model: 'Manual 2B1' };
-  const snapshotKeys = ['aircraft_type', 'registration', 'aircraft_category', 'engine_type', 'engine_model'];
+  const flightBody = { date: todayStr, day_pic: 1, aircraft_type: 'FAKE', registration: 'FAKE', aircraft_category: 'Simulator', engine_type: 'Multi Engine', engine_model: 'Manual 2B1', powerplant_type: 'Piston', helicopter_class: 'Light' };
+  const snapshotKeys = ['aircraft_type', 'registration', 'aircraft_category', 'engine_type', 'engine_model', 'powerplant_type', 'helicopter_class'];
   function assertSnapshot(flight, expected) {
     for (const key of snapshotKeys) assert.strictEqual(flight[key], expected[key], key);
   }
@@ -63,13 +67,15 @@ module.exports = async function testAircraftProfiles({ api, expect, dbPath, toda
   const list = await expect(await api('GET', '/api/flights'), 200);
   assert.strictEqual(list.flights.find(f => f.id === selected.id).aircraft_profile_id, profile.id);
   assert.strictEqual(list.flights.find(f => f.id === selected.id).engine_model, '2B');
+  assert.strictEqual(list.flights.find(f => f.id === selected.id).powerplant_type, 'Turbine');
+  assert.strictEqual(list.flights.find(f => f.id === selected.id).helicopter_class, 'Intermediate');
   const detail = await expect(await api('GET', `/api/flights/${selected.id}`), 200);
   assert.strictEqual(detail.aircraft_profile_id, profile.id);
   assertSnapshot(detail, profile);
   all = await expect(await api('GET', '/api/aircraft-profiles'), 200);
   assert.ok(all.find(p => p.id === profile.id).last_used_at);
   await expect(await api('PUT', `/api/aircraft-profiles/${profile.id}`, {
-    aircraft_type: 'CHANGED', registration: 'C-NEW', aircraft_category: 'Aeroplane', engine_type: 'Multi Engine', engine_model: '2B1'
+    aircraft_type: 'CHANGED', registration: 'C-NEW', aircraft_category: 'Aeroplane', engine_type: 'Multi Engine', engine_model: '2B1', powerplant_type: 'Piston', helicopter_class: 'Heavy'
   }), 200);
   let saved = await expect(await api('PUT', `/api/flights/${selected.id}`, { ...flightBody, aircraft_profile_id: profile.id, route: 'edited' }), 200);
   assertSnapshot(saved, profile);
@@ -95,9 +101,33 @@ module.exports = async function testAircraftProfiles({ api, expect, dbPath, toda
   const manual = await expect(await api('POST', '/api/flights', flightBody), 201);
   assert.strictEqual(manual.aircraft_profile_id, null);
   assert.strictEqual(manual.engine_model, 'Manual 2B1');
-  const { engine_model: omittedModel, ...legacyBody } = flightBody;
+  const { engine_model: omittedModel, powerplant_type: omittedPowerplant, helicopter_class: omittedClass, ...legacyBody } = flightBody;
+  for (const field of ['powerplant_type', 'helicopter_class']) {
+    assert.strictEqual((await expect(await api('PUT', `/api/flights/${manual.id}`, legacyBody), 200))[field], flightBody[field]);
+    assert.strictEqual((await expect(await api('PUT', `/api/aircraft-profiles/${profile.id}`, { nickname: 'Legacy update' }), 200))[field], changedProfile[field]);
+    for (const invalid of [null, [], {}, true, 42, 'turbine', 'Unknown', 'Light/Medium']) {
+      await expect(await api('POST', '/api/aircraft-profiles', { registration: 'C-BAD', aircraft_type: 'Bad', [field]: invalid }), 400);
+      await expect(await api('PUT', `/api/aircraft-profiles/${profile.id}`, { [field]: invalid }), 400);
+      await expect(await api('POST', '/api/flights', { ...flightBody, [field]: invalid }), 400);
+      await expect(await api('PUT', `/api/flights/${manual.id}`, { ...flightBody, [field]: invalid }), 400);
+    }
+  }
   const legacyCreate = await expect(await api('POST', '/api/flights', legacyBody), 201);
   assert.strictEqual(legacyCreate.engine_model, '');
+  assert.strictEqual(legacyCreate.powerplant_type, '');
+  assert.strictEqual(legacyCreate.helicopter_class, '');
+  const manualDuplicate = await expect(await api('POST', '/api/flights', { ...detail, aircraft_profile_id: null }), 201);
+  assertSnapshot(manualDuplicate, profile);
+  for (const helicopter_class of ['Light', 'Intermediate', 'Medium', 'Heavy', '']) {
+    const powerplant_type = helicopter_class ? 'Turbine' : '';
+    const updatedProfile = await expect(await api('PUT', `/api/aircraft-profiles/${profile.id}`, { helicopter_class, powerplant_type }), 200);
+    const updatedManual = await expect(await api('PUT', `/api/flights/${manual.id}`, { ...legacyBody, helicopter_class, powerplant_type }), 200);
+    assert.strictEqual(updatedProfile.helicopter_class, helicopter_class);
+    assert.strictEqual(updatedProfile.powerplant_type, powerplant_type);
+    assert.strictEqual(updatedManual.helicopter_class, helicopter_class);
+    assert.strictEqual(updatedManual.powerplant_type, powerplant_type);
+    assertSnapshot(await expect(await api('GET', `/api/flights/${manualDuplicate.id}`), 200), profile);
+  }
   assert.strictEqual((await expect(await api('PUT', `/api/flights/${manual.id}`, legacyBody), 200)).engine_model, 'Manual 2B1');
   assert.strictEqual((await expect(await api('PUT', `/api/flights/${manual.id}`, { ...legacyBody, engine_model: ' 2B ' }), 200)).engine_model, '2B');
   for (const invalid of [null, [], {}, true, 42, 'x'.repeat(101), 'bad\nmodel']) {

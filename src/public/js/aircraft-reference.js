@@ -14,7 +14,7 @@ window.AircraftReference = class AircraftReference {
         });
         this.el('referenceApply').addEventListener('click', () => this.apply());
         this.el('referenceClear').addEventListener('click', () => this.clear());
-        for (const id of ['profileType', 'profileCategory', 'profileEngine', 'profileEngineModel']) {
+        for (const id of ['profileType', 'profileCategory', 'profileEngine', 'profileEngineModel', 'profilePowerplant', 'profileHelicopterClass']) {
             this.el(id).addEventListener('input', () => this.clear());
         }
         this.clear();
@@ -64,7 +64,10 @@ window.AircraftReference = class AircraftReference {
         if (category) this.el('profileCategory').value = category;
         const engine = row.engineCount === 1 ? 'Single Engine' : Number.isInteger(row.engineCount) && row.engineCount > 1 ? 'Multi Engine' : null;
         if (engine) this.el('profileEngine').value = engine;
-        this.el('referenceStatus').textContent = `Applied ${row.icao} / ${row.manufacturer} / ${row.model} to draft only. ${row.model.length > 50 ? 'Model exceeds 50 characters: ICAO used as type. ' : ''}Category ${category ? 'updated' : 'unchanged (unsupported)'}; engine count ${engine ? 'updated' : 'unchanged (unknown)'}. Verify exact variant and installed engine manually; installed engine model was not changed. Save Profile separately.`;
+        const powerplant = row.engineType === 'turbine' ? 'Turbine' : row.engineType === 'piston' ? 'Piston' : null;
+        if (powerplant) this.el('profilePowerplant').value = powerplant;
+        // wakeCategory is an ATC wake category, not helicopter size. Keep manual class.
+        this.el('referenceStatus').textContent = `Applied ${row.icao} / ${row.manufacturer} / ${row.model} to draft only. ${row.model.length > 50 ? 'Model exceeds 50 characters: ICAO used as type. ' : ''}Category ${category ? 'updated' : 'unchanged (unsupported)'}; engine count ${engine ? 'updated' : 'unchanged (unknown)'}. Powerplant ${powerplant ? 'updated' : 'unchanged (unsupported or unknown)'}; helicopter class kept for manual confirmation (wake category is not size). Verify exact variant and installed engine manually; installed engine model was not changed. Save Profile separately.`;
         this.el('referenceApply').disabled = true;
     }
 };

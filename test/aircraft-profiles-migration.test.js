@@ -40,7 +40,11 @@ module.exports = function testAircraftProfileMigration() {
       assert.strictEqual(migrated.engine_model, '', 'historical flights remain unknown');
       const migratedProfiles = db.prepare('SELECT * FROM aircraft_profiles ORDER BY id').all();
       assert.strictEqual(migratedProfiles[0].engine_model, '');
-      assert.deepStrictEqual(migratedProfiles.map(({ engine_model, ...old }) => old), originalProfile);
+      for (const field of ['powerplant_type', 'helicopter_class']) {
+        assert.strictEqual(migrated[field], '', 'historical metadata stays unknown');
+        assert.strictEqual(migratedProfiles[0][field], '');
+      }
+      assert.deepStrictEqual(migratedProfiles.map(({ engine_model, powerplant_type, helicopter_class, ...old }) => old), originalProfile);
       assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM aircraft_profiles').get().n, 1);
       assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM aircraft_types').get().n, 0);
       assert.strictEqual(db.pragma('foreign_key_check').length, 0);

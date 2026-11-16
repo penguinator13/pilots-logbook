@@ -62,7 +62,7 @@ window.AircraftProfileSettings = class AircraftProfileSettings {
         if (this.busy) return;
         this.reference?.clear();
         this.editing = profile;
-        const fields = { profileRegistration: 'registration', profileType: 'aircraft_type', profileCategory: 'aircraft_category', profileEngine: 'engine_type', profileEngineModel: 'engine_model', profileNickname: 'nickname', profileOperator: 'operator' };
+        const fields = { profileRegistration: 'registration', profileType: 'aircraft_type', profileCategory: 'aircraft_category', profileEngine: 'engine_type', profileEngineModel: 'engine_model', profilePowerplant: 'powerplant_type', profileHelicopterClass: 'helicopter_class', profileNickname: 'nickname', profileOperator: 'operator' };
         Object.entries(fields).forEach(([id, key]) => { this.el(id).value = profile[key] || ''; });
         this.el('profileFavourite').checked = !!profile.favourite;
         this.el('profileDefault').checked = !!profile.is_default;
@@ -97,6 +97,8 @@ window.AircraftProfileSettings = class AircraftProfileSettings {
             aircraft_category: this.el('profileCategory').value,
             engine_type: this.el('profileEngine').value,
             engine_model: this.el('profileEngineModel').value.trim(),
+            powerplant_type: this.el('profilePowerplant').value,
+            helicopter_class: this.el('profileHelicopterClass').value,
             nickname: this.el('profileNickname').value.trim(),
             operator: this.el('profileOperator').value.trim(),
             favourite: !!this.el('profileFavourite').checked,

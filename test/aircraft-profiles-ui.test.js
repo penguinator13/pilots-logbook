@@ -40,7 +40,7 @@ test('saved flight policy retains edit snapshots and detaches unsafe duplicate a
         assert.equal(duplicate.id, null);
         assert.equal(duplicate.details.registration, 'C-OLD');
     }
-    for (const field of ['registration', 'aircraft_type', 'aircraft_category', 'engine_type', 'engine_model']) {
+    for (const field of ['registration', 'aircraft_type', 'aircraft_category', 'engine_type', 'engine_model', 'powerplant_type', 'helicopter_class']) {
         assert.equal(savedSelection(flight, 'duplicate', [{ ...same, [field]: 'changed' }]).id, null);
     }
     assert.equal(savedSelection(flight, 'duplicate', [same]).id, 7);
@@ -65,7 +65,7 @@ class Element {
     get options() { return this.children.flatMap(child => child.label ? child.children : [child]); }
 }
 function pickerEnvironment(profiles, mode = 'add', fail = false, typesReady = Promise.resolve()) {
-    const ids = Object.fromEntries(['flightForm', 'aircraftProfile', 'profileSearch', 'profileStatus', 'profileRetry', 'aircraft_type', 'registration', 'engine_model'].map(id => [id, new Element()]));
+    const ids = Object.fromEntries(['flightForm', 'aircraftProfile', 'profileSearch', 'profileStatus', 'profileRetry', 'aircraft_type', 'registration', 'engine_model', 'powerplant_type', 'helicopter_class'].map(id => [id, new Element()]));
     const radios = [new Element('Helicopter'), new Element('Aeroplane'), new Element('Simulator'), new Element('Single Engine'), new Element('Multi Engine')];
     radios[0].checked = radios[3].checked = true;
     ids.flightForm.elements = [];
@@ -78,12 +78,16 @@ function pickerEnvironment(profiles, mode = 'add', fail = false, typesReady = Pr
     return { picker: new context.window.FlightAircraftProfiles(mode, typesReady), ids, radios, context, document, setFailure: value => { fail = value; } };
 }
 test('native flight picker autofills and locks profile fields; Manual keeps their displayed values', async () => {
-    const profile = { id: 8, registration: 'C-TEST', aircraft_type: 'H125', aircraft_category: 'Helicopter', engine_type: 'Multi Engine', engine_model: '2B1', is_default: true };
+    const profile = { id: 8, registration: 'C-TEST', aircraft_type: 'H125', aircraft_category: 'Helicopter', engine_type: 'Multi Engine', engine_model: '2B1', powerplant_type: 'Turbine', helicopter_class: 'Intermediate', is_default: true };
     const { picker, ids, radios } = pickerEnvironment([profile]);
     await picker.ready;
     assert.equal(picker.id, 8);
     assert.equal(ids.registration.value, 'C-TEST');
     assert.equal(ids.engine_model.value, '2B1');
+    assert.equal(ids.powerplant_type.value, 'Turbine');
+    assert.equal(ids.helicopter_class.value, 'Intermediate');
+    assert.equal(ids.powerplant_type.disabled, picker.id !== null);
+    assert.equal(ids.helicopter_class.disabled, picker.id !== null);
     assert.equal(ids.engine_model.readOnly, picker.id !== null);
     assert.equal(ids.aircraft_type.value, 'H125');
     assert.equal(ids.aircraft_type.disabled, true);
@@ -94,6 +98,10 @@ test('native flight picker autofills and locks profile fields; Manual keeps thei
     assert.equal(picker.id, null);
     assert.equal(ids.registration.value, 'C-TEST');
     assert.equal(ids.engine_model.value, '2B1');
+    assert.equal(ids.powerplant_type.value, 'Turbine');
+    assert.equal(ids.helicopter_class.value, 'Intermediate');
+    assert.equal(ids.powerplant_type.disabled, picker.id !== null);
+    assert.equal(ids.helicopter_class.disabled, picker.id !== null);
     assert.equal(ids.engine_model.readOnly, picker.id !== null);
     assert.equal(ids.aircraft_type.disabled, false);
     assert.equal(radios[0].disabled, false);
@@ -104,6 +112,7 @@ test('both flight pages load native profile controls and save integer/null assoc
         const html = fs.readFileSync(path.join(__dirname, '../src/public', page), 'utf8');
         assert.match(html, /<select[^>]*id="aircraftProfile"/, `${page} has native profile select`);
         assert.match(html, /id="profileSearch"/);
+        for (const field of ['powerplant_type', 'helicopter_class']) assert.match(html, new RegExp(`<select[^>]*id="${field}"`));
         assert.match(html, /<input[^>]*id="engine_model"[^>]*maxlength="100"/);
         assert.match(html, /flight-aircraft-profiles\.js/);
     }
@@ -114,13 +123,13 @@ test('both flight pages load native profile controls and save integer/null assoc
 });
 
 function settingsEnvironment(initial = [], reference = false) {
-    const names = ['aircraftProfileForm', 'profileEditorTitle', 'profileRegistration', 'profileType', 'profileCategory', 'profileEngine', 'profileEngineModel', 'profileNickname', 'profileOperator', 'profileFavourite', 'profileDefault', 'profileSaveBtn', 'profileCancelBtn', 'profileShowArchived', 'profileList', 'profileSettingsStatus', 'profileSettingsRetry', 'profileTypeOptions'];
+    const names = ['aircraftProfileForm', 'profileEditorTitle', 'profileRegistration', 'profileType', 'profileCategory', 'profileEngine', 'profileEngineModel', 'profilePowerplant', 'profileHelicopterClass', 'profileNickname', 'profileOperator', 'profileFavourite', 'profileDefault', 'profileSaveBtn', 'profileCancelBtn', 'profileShowArchived', 'profileList', 'profileSettingsStatus', 'profileSettingsRetry', 'profileTypeOptions'];
     if (reference) names.push('referenceSearch', 'referenceAll', 'referenceSearchBtn', 'referenceResults', 'referenceApply', 'referenceClear', 'referenceStatus', 'referenceSource');
     const ids = Object.fromEntries(names.map(id => [id, new Element()]));
-    ids.aircraftProfileForm.reset = () => { names.filter(id => /^profile(Registration|Type|EngineModel|Nickname|Operator)$/.test(id)).forEach(id => { ids[id].value = ''; }); ids.profileCategory.value = 'Helicopter'; ids.profileEngine.value = 'Single Engine'; ids.profileFavourite.checked = ids.profileDefault.checked = false; };
+    ids.aircraftProfileForm.reset = () => { names.filter(id => /^profile(Registration|Type|EngineModel|Powerplant|HelicopterClass|Nickname|Operator)$/.test(id)).forEach(id => { ids[id].value = ''; }); ids.profileCategory.value = 'Helicopter'; ids.profileEngine.value = 'Single Engine'; ids.profileFavourite.checked = ids.profileDefault.checked = false; };
     ids.profileRegistration.focus = () => {};
     ids.aircraftProfileForm.scrollIntoView = () => {};
-    ids.aircraftProfileForm.querySelectorAll = () => names.filter(id => /^profile(Registration|Type|Category|Engine|EngineModel|Nickname|Operator|Favourite|Default)$/.test(id)).map(id => ids[id]);
+    ids.aircraftProfileForm.querySelectorAll = () => names.filter(id => /^profile(Registration|Type|Category|Engine|EngineModel|Powerplant|HelicopterClass|Nickname|Operator|Favourite|Default)$/.test(id)).map(id => ids[id]);
     let writeGate;
     let profiles = initial.map(p => ({ ...p }));
     const calls = [];
@@ -151,6 +160,7 @@ test('profile settings adds explicit server-backed flags, reloads saved data and
     ids.profileRegistration.value = 'C-TEST'; ids.profileType.value = 'H125';
     ids.profileCategory.value = 'Helicopter'; ids.profileEngine.value = 'Multi Engine';
     ids.profileEngineModel.value = ' 2B / 2B1 ';
+    ids.profilePowerplant.value = 'Turbine'; ids.profileHelicopterClass.value = 'Intermediate';
     ids.profileNickname.value = '<img onerror=alert(1)>'; ids.profileOperator.value = 'Rescue';
     ids.profileFavourite.checked = ids.profileDefault.checked = true;
     await settings.save();
@@ -159,9 +169,11 @@ test('profile settings adds explicit server-backed flags, reloads saved data and
     const body = JSON.parse(written.body);
     assert.equal(body.favourite, true); assert.equal(body.is_default, true); assert.equal(body.archived, false);
     assert.equal(body.engine_model, '2B / 2B1');
+    assert.equal(body.powerplant_type, 'Turbine'); assert.equal(body.helicopter_class, 'Intermediate');
     assert.equal(body.nickname, '<img onerror=alert(1)>');
     assert.ok(calls.slice(calls.indexOf(written) + 1).some(call => !call.method && call.url.includes('include_archived=true')), 'read back after save');
     settings.edit(settings.profiles[0]);
+    assert.equal(ids.profilePowerplant.value, 'Turbine'); assert.equal(ids.profileHelicopterClass.value, 'Intermediate');
     ids.profileOperator.value = 'Training';
     await settings.save();
     assert.equal(JSON.parse(calls.find(call => call.method === 'PUT').body).operator, 'Training');
@@ -205,6 +217,7 @@ test('profile settings optional text remains API-valid empty strings', async () 
     assert.equal(payload.nickname, '');
     assert.equal(payload.operator, '');
     assert.equal(payload.engine_model, '');
+    assert.equal(payload.powerplant_type, ''); assert.equal(payload.helicopter_class, '');
 });
 
 test('profile fetch failure still waits for type catalogue so historical snapshots cannot be erased by its late response', async () => {
@@ -239,18 +252,19 @@ test('profile settings deep link opens the new tab and shared profile styles sup
 });
 
 test('flight picker does not apply delayed default after manual intent, editing, duplication or nonblank data', async () => {
-    const profile = { id: 8, registration: 'C-TEST', aircraft_type: 'H125', aircraft_category: 'Helicopter', engine_type: 'Multi Engine', engine_model: '2B1', is_default: true };
+    const profile = { id: 8, registration: 'C-TEST', aircraft_type: 'H125', aircraft_category: 'Helicopter', engine_type: 'Multi Engine', engine_model: '2B1', powerplant_type: 'Turbine', helicopter_class: 'Intermediate', is_default: true };
     for (const mode of ['edit', 'duplicate']) {
         const { picker } = pickerEnvironment([profile], mode);
         await picker.ready;
         assert.equal(picker.id, null);
     }
-    for (const intent of ['manual', 'typed']) {
+    for (const intent of ['manual', 'typed', 'powerplant_type', 'helicopter_class']) {
         let resolveTypes;
         const types = new Promise(resolve => { resolveTypes = resolve; });
         const { picker, ids } = pickerEnvironment([profile], 'add', false, types);
         if (intent === 'manual') ids.aircraftProfile.dispatch('change');
-        else ids.registration.value = 'C-MANUAL';
+        else if (intent === 'typed') ids.registration.value = 'C-MANUAL';
+        else ids[intent].value = intent === 'powerplant_type' ? 'Piston' : 'Heavy';
         resolveTypes();
         await picker.ready;
         assert.equal(picker.id, null);
@@ -354,7 +368,7 @@ test('edit submission freezes manual/profile intent until delayed PUT and picker
         for (const fail of [false, true]) {
             const env = pickerEnvironment([], 'edit');
             const { picker, ids, radios, context, document } = env;
-            const flight = { engine_model: '2B', aircraft_profile_id: linked ? 6 : null, registration: 'C-OLD', aircraft_type: 'R44', aircraft_category: 'Helicopter', engine_type: 'Single Engine' };
+            const flight = { engine_model: '2B', powerplant_type: 'Piston', helicopter_class: 'Light', aircraft_profile_id: linked ? 6 : null, registration: 'C-OLD', aircraft_type: 'R44', aircraft_category: 'Helicopter', engine_type: 'Single Engine' };
             await picker.restore(flight);
             for (const id of ['submitBtn', 'submitText', 'successAlert', 'errorAlert', 'date', 'pic', 'copilot', 'departure', 'arrival', 'route', 'day_pic', 'night_pic', 'day_dual', 'night_dual', 'day_sic', 'night_sic', 'day_cmnd_practice', 'night_cmnd_practice', 'takeoffs_day', 'takeoffs_night', 'landings_day', 'landings_night']) ids[id] = new Element();
             ids.date.value = '2020-01-01';
@@ -381,6 +395,7 @@ test('edit submission freezes manual/profile intent until delayed PUT and picker
             const before = controls.map(field => [field.disabled, field.readOnly]);
             const saving = context.submitForm();
             assert.equal(submitted.engine_model, '2B');
+            assert.equal(submitted.powerplant_type, 'Piston'); assert.equal(submitted.helicopter_class, 'Light');
             const frozenDuringPut = controls.every(field => field.disabled);
             assert.equal(ids.engine_model.disabled, true);
             // Native user interactions cannot select Manual or enter a new registration while frozen.
@@ -408,11 +423,13 @@ test('flight listing displays supplied engine models as escaped text and omits u
         formatDate: value => value, truncate: value => value,
         escapeHtml: value => String(value).replaceAll('<', '&lt;').replaceAll('>', '&gt;') };
     vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/public/js/flights-list.js'), 'utf8'), context);
-    context.displayFlights([{ id: 1, aircraft_type: 'AS350B3', engine_model: '<2B1>', flight_time: 1 }]);
+    context.displayFlights([{ id: 1, aircraft_type: 'AS350B3', engine_model: '<2B1>', powerplant_type: 'Turbine', helicopter_class: 'Intermediate', flight_time: 1 }]);
     assert.match(table.innerHTML, /Engine model: &lt;2B1&gt;/);
+    assert.match(table.innerHTML, /Powerplant: Turbine/);
+    assert.match(table.innerHTML, /Helicopter class: Intermediate/);
     assert.doesNotMatch(table.innerHTML, /<2B1>/);
     context.displayFlights([{ id: 1, aircraft_type: 'AS350B3', engine_model: '', flight_time: 1 }]);
-    assert.doesNotMatch(table.innerHTML, /Engine model:/);
+    assert.doesNotMatch(table.innerHTML, /Engine model:|Powerplant:|Helicopter class:/);
 });
 
 test('default is eligible only on a fresh untouched blank add form', () => {
@@ -452,4 +469,26 @@ test('settings integrates reference and clears old selections on edit, cancel an
     assert.equal(ids.profileType.value, '');
     settings.setBusy(false);
     assert.equal(ids.referenceApply.disabled, true, 'old selection invalidated by save');
+});
+
+test('reference full-width inputs exclude checkboxes and all profile CSS clients use the fixed asset key', () => {
+    const css = fs.readFileSync(path.join(__dirname, '../src/public/css/aircraft-profiles.css'), 'utf8');
+    assert.doesNotMatch(css, /\.aircraft-reference\s+:is\(\s*input\s*,\s*select\s*\)/);
+    assert.match(css, /\.aircraft-reference\s+:is\(input:not\(\[type="checkbox"\]\),\s*select\)/);
+    for (const page of fs.readdirSync(path.join(__dirname, '../src/public')).filter(name => name.endsWith('.html'))) {
+        const html = fs.readFileSync(path.join(__dirname, '../src/public', page), 'utf8');
+        if (html.includes('/css/aircraft-profiles.css')) assert.match(html, /aircraft-profiles\.css\?v=1\.11\.0/);
+    }
+});
+
+test('profile and flight optional dropdowns expose exactly the allowed blank and enum values', () => {
+    for (const page of ['settings.html', 'add-flight.html', 'edit-flight.html']) {
+        const html = fs.readFileSync(path.join(__dirname, '../src/public', page), 'utf8');
+        for (const [field, values] of Object.entries({ powerplant_type: ['', 'Turbine', 'Piston'], helicopter_class: ['', 'Light', 'Intermediate', 'Medium', 'Heavy'] })) {
+            const select = html.match(new RegExp(`<select[^>]*name="${field}"[^>]*>([\\s\\S]*?)</select>`));
+            assert.ok(select, `${page}: ${field}`);
+            assert.deepEqual([...select[1].matchAll(/<option value="([^"]*)"/g)].map(match => match[1]), values);
+            assert.doesNotMatch(select[0], /required/);
+        }
+    }
 });

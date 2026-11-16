@@ -4,17 +4,17 @@ const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 router.use(requireAuth);
 
-const FIELDS = 'id, registration, aircraft_type, aircraft_category, engine_type, engine_model, nickname, operator, favourite, is_default, archived, last_used_at';
+const FIELDS = 'id, registration, aircraft_type, aircraft_category, engine_type, engine_model, powerplant_type, helicopter_class, nickname, operator, favourite, is_default, archived, last_used_at';
 const TEXT_LIMITS = { registration: 50, aircraft_type: 50, nickname: 100, operator: 100, engine_model: 100 };
 const FLAGS = ['favourite', 'is_default', 'archived'];
-const ENUMS = { aircraft_category: ['Helicopter', 'Aeroplane', 'Simulator'], engine_type: ['Single Engine', 'Multi Engine'] };
+const ENUMS = { aircraft_category: ['Helicopter', 'Aeroplane', 'Simulator'], engine_type: ['Single Engine', 'Multi Engine'], powerplant_type: ['', 'Turbine', 'Piston'], helicopter_class: ['', 'Light', 'Intermediate', 'Medium', 'Heavy'] };
 function serialize(row) {
   return { ...row, favourite: Boolean(row.favourite), is_default: Boolean(row.is_default), archived: Boolean(row.archived) };
 }
 function validate(body, existing) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return { error: 'Expected an object' };
   const data = existing ? { ...existing } : {
-    aircraft_category: 'Helicopter', engine_type: 'Single Engine', engine_model: '', nickname: '', operator: '',
+    aircraft_category: 'Helicopter', engine_type: 'Single Engine', engine_model: '', powerplant_type: '', helicopter_class: '', nickname: '', operator: '',
     favourite: false, is_default: false, archived: false
   };
   for (const [field, max] of Object.entries(TEXT_LIMITS)) {
@@ -49,17 +49,17 @@ function save(req, res, existing) {
   try {
     const id = db.transaction(() => {
       if (data.is_default) db.prepare('UPDATE aircraft_profiles SET is_default = 0 WHERE user_id = ?').run(req.session.userId);
-      const values = [data.registration, data.aircraft_type, data.aircraft_category, data.engine_type, data.engine_model,
+      const values = [data.registration, data.aircraft_type, data.aircraft_category, data.engine_type, data.engine_model, data.powerplant_type, data.helicopter_class,
         data.nickname, data.operator, Number(data.favourite), Number(data.is_default), Number(data.archived)];
       if (existing) {
-        db.prepare(`UPDATE aircraft_profiles SET registration = ?, aircraft_type = ?, aircraft_category = ?, engine_type = ?, engine_model = ?,
+        db.prepare(`UPDATE aircraft_profiles SET registration = ?, aircraft_type = ?, aircraft_category = ?, engine_type = ?, engine_model = ?, powerplant_type = ?, helicopter_class = ?,
           nickname = ?, operator = ?, favourite = ?, is_default = ?, archived = ? WHERE id = ? AND user_id = ?`)
           .run(...values, existing.id, req.session.userId);
         return existing.id;
       }
       return db.prepare(`INSERT INTO aircraft_profiles
-        (registration, aircraft_type, aircraft_category, engine_type, engine_model, nickname, operator, favourite, is_default, archived, user_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(...values, req.session.userId).lastInsertRowid;
+        (registration, aircraft_type, aircraft_category, engine_type, engine_model, powerplant_type, helicopter_class, nickname, operator, favourite, is_default, archived, user_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(...values, req.session.userId).lastInsertRowid;
     })();
     const row = db.prepare(`SELECT ${FIELDS} FROM aircraft_profiles WHERE id = ? AND user_id = ?`).get(id, req.session.userId);
     return res.status(existing ? 200 : 201).json(serialize(row));

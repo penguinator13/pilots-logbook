@@ -54,6 +54,7 @@ window.FlightAircraftProfiles = class FlightAircraftProfiles {
                 !['date', 'radio', 'hidden', 'submit', 'button', 'select-one', 'search'].includes(field.type) &&
                 field.value && !(field.type === 'number' && Number(field.value) === 0));
             const blank = !hasOtherData && !document.getElementById('aircraft_type').value && !document.getElementById('registration').value &&
+                !document.getElementById('powerplant_type').value && !document.getElementById('helicopter_class').value &&
                 !Array.from(document.querySelectorAll('input[name="aircraft_category"], input[name="engine_type"]')).some(input => input.checked && !['Helicopter', 'Single Engine'].includes(input.value));
             const profile = window.AircraftProfiles.defaultProfile(profiles, { mode: this.mode, dirty: this.dirty, blank });
             if (profile) {
@@ -83,6 +84,7 @@ window.FlightAircraftProfiles = class FlightAircraftProfiles {
         type.value = details.aircraft_type;
         document.getElementById('registration').value = details.registration || '';
         document.getElementById('engine_model').value = details.engine_model || '';
+        for (const name of ['powerplant_type', 'helicopter_class']) document.getElementById(name).value = details[name] || '';
         for (const name of ['aircraft_category', 'engine_type']) {
             document.querySelectorAll(`input[name="${name}"]`).forEach(input => { input.checked = input.value === details[name]; });
         }
@@ -116,6 +118,7 @@ window.FlightAircraftProfiles = class FlightAircraftProfiles {
         document.getElementById('aircraft_type').disabled = locked;
         document.getElementById('registration').readOnly = locked;
         document.getElementById('engine_model').readOnly = locked;
+        for (const name of ['powerplant_type', 'helicopter_class']) document.getElementById(name).disabled = locked;
         document.querySelectorAll('input[name="aircraft_category"], input[name="engine_type"]').forEach(input => { input.disabled = locked; });
         let message = this.state.saved
             ? 'Saved flight details are shown, not the current profile. Select a different profile to replace them, or Manual entry to edit them.'

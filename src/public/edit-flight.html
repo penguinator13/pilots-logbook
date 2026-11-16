@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/styles.css?v=1.8.2">
     <script src="/js/appearance.js?v=1.8.2"></script>
     <link rel="stylesheet" href="/css/cockpit.css?v=1.8.2">
-    <link rel="stylesheet" href="/css/aircraft-profiles.css?v=1.9.1">
+    <link rel="stylesheet" href="/css/aircraft-profiles.css?v=1.11.0">
 </head>
 <body>
     <!-- Navigation -->
@@ -110,6 +110,28 @@
                         <option value="B206">B206</option>
                         <option value="Bell 212">Bell 212</option>
                     </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="powerplant_type" class="form-label">Powerplant (optional)</label>
+                    <select id="powerplant_type" name="powerplant_type" class="form-select">
+                        <option value="">Unknown / not specified</option>
+                        <option value="Turbine">Turbine</option>
+                        <option value="Piston">Piston</option>
+                    </select>
+                    <div class="form-help">Separate from single/multi-engine count; leave unknown if not confirmed.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="helicopter_class" class="form-label">Helicopter class (optional)</label>
+                    <select id="helicopter_class" name="helicopter_class" class="form-select">
+                        <option value="">Unknown / not specified</option>
+                        <option value="Light">Light</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Heavy">Heavy</option>
+                    </select>
+                    <div class="form-help">Confirm manually for your helicopter. FAA wake category is not a helicopter size class.</div>
                 </div>
 
                 <div class="form-group">
@@ -264,8 +286,8 @@
     </main>
 
     <script src="/js/common.js"></script>
-    <script src="/js/aircraft-profiles.js?v=1.9.1"></script>
-    <script src="/js/flight-aircraft-profiles.js?v=1.9.1"></script>
-    <script src="/js/flight-form.js?v=1.9.1"></script>
+    <script src="/js/aircraft-profiles.js?v=1.11.0"></script>
+    <script src="/js/flight-aircraft-profiles.js?v=1.11.0"></script>
+    <script src="/js/flight-form.js?v=1.11.0"></script>
 </body>
 </html>

@@ -122,6 +122,11 @@ function initializeDatabase() {
       ON aircraft_profiles(user_id) WHERE is_default = 1;
   `);
 
+  // Optional metadata is unknown on old records, never inferred or backfilled.
+  for (const table of ['aircraft_profiles', 'flights']) {
+    addColumnIfMissing(table, 'powerplant_type', "TEXT NOT NULL DEFAULT '' CHECK(powerplant_type IN ('', 'Turbine', 'Piston'))");
+    addColumnIfMissing(table, 'helicopter_class', "TEXT NOT NULL DEFAULT '' CHECK(helicopter_class IN ('', 'Light', 'Intermediate', 'Medium', 'Heavy'))");
+  }
   addColumnIfMissing('aircraft_profiles', 'engine_model', "TEXT NOT NULL DEFAULT ''");
   addColumnIfMissing('flights', 'engine_model', "TEXT NOT NULL DEFAULT ''");
   addColumnIfMissing('flights', 'aircraft_profile_id', 'INTEGER REFERENCES aircraft_profiles(id)');

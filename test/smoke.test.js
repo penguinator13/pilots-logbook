@@ -8,7 +8,7 @@ const os = require('os');
 const path = require('path');
 const assert = require('assert');
 
-const PORT = 3999;
+const PORT = Number(process.env.TEST_PORT || 3999);
 const BASE = `http://127.0.0.1:${PORT}`;
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'logbook-test-'));
 const dbPath = path.join(tmpDir, 'test.db');

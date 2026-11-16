@@ -36,7 +36,7 @@
 }
 .aircraft-reference legend { padding-inline: 0.35rem; font-weight: 600; }
 .aircraft-reference .form-help { margin-block: 0.75rem; }
-.aircraft-reference :is(input, select) { width: 100%; min-width: 0; }
+.aircraft-reference :is(input:not([type="checkbox"]), select) { width: 100%; min-width: 0; }
 .aircraft-reference .btn { white-space: normal; overflow-wrap: anywhere; }
 .aircraft-reference a { color: var(--primary-color); }
 #aircraftProfileForm { scroll-margin-top: 100px; }

@@ -367,6 +367,8 @@ async function submitForm() {
             engine_type: document.querySelector('input[name="engine_type"]:checked').value,
             aircraft_type: document.getElementById('aircraft_type').value,
             engine_model: document.getElementById('engine_model').value.trim(),
+            powerplant_type: document.getElementById('powerplant_type').value,
+            helicopter_class: document.getElementById('helicopter_class').value,
             registration: document.getElementById('registration').value.toUpperCase() || null,
             pic: document.getElementById('pic').value || null,
             copilot: document.getElementById('copilot').value || null,

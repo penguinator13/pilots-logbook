@@ -14,7 +14,7 @@ class Element {
 const row = { icao: 'TEST', manufacturer: 'TEST ONLY Maker', model: 'Test Rotor', category: 'helicopter', engineCount: 2, engineType: 'turbine' };
 const data = { source: { title: 'FAA test fixture', url: 'https://www.faa.gov/test-fixture', edition: 'TEST ONLY' }, aircraft: [row, { ...row, manufacturer: 'Alias Maker', model: 'Alias Rotor' }], total: 2 };
 function environment(fetcher = async () => ({ ok: true, json: async () => data })) {
-  const names = ['referenceSearch', 'referenceAll', 'referenceSearchBtn', 'referenceResults', 'referenceApply', 'referenceClear', 'referenceStatus', 'referenceSource', 'profileType', 'profileCategory', 'profileEngine', 'profileEngineModel'];
+  const names = ['referenceSearch', 'referenceAll', 'referenceSearchBtn', 'referenceResults', 'referenceApply', 'referenceClear', 'referenceStatus', 'referenceSource', 'profileType', 'profileCategory', 'profileEngine', 'profileEngineModel', 'profilePowerplant', 'profileHelicopterClass'];
   const ids = Object.fromEntries(names.map(name => [name, new Element()]));
   ids.profileCategory.value = 'Helicopter'; ids.profileEngine.value = 'Single Engine';
   const calls = [];
@@ -28,6 +28,7 @@ function environment(fetcher = async () => ({ ok: true, json: async () => data }
 test('search and native alias selection only preview; explicit Apply prefills editable draft without exact engine inference or writes', async () => {
   const { picker, ids, calls } = environment();
   ids.profileEngineModel.value = 'Installed engine entered manually';
+  ids.profileHelicopterClass.value = 'Intermediate';
   ids.referenceSearch.value = 'Test';
   await picker.search();
   assert.match(calls[0][0], /q=Test.*category=helicopter/);
@@ -39,6 +40,8 @@ test('search and native alias selection only preview; explicit Apply prefills ed
   assert.equal(ids.profileType.value, 'Alias Rotor');
   assert.equal(ids.profileEngine.value, 'Multi Engine');
   assert.equal(ids.profileCategory.value, 'Helicopter');
+  assert.equal(ids.profilePowerplant.value, 'Turbine');
+  assert.equal(ids.profileHelicopterClass.value, 'Intermediate');
   assert.equal(ids.profileEngineModel.value, 'Installed engine entered manually');
   assert.equal(ids.profileType.disabled, false);
   assert.equal(ids.referenceSource.href, data.source.url);
@@ -126,7 +129,7 @@ test('Settings renders labelled native controls, separate explicit replace actio
   for (const id of ['referenceSearch', 'referenceResults']) assert.match(html, new RegExp('for="' + id + '"'));
   assert.match(html, /<select[^>]*id="referenceResults"/);
   assert.match(html, /id="referenceStatus"[^>]*role="status"/);
-  assert.match(html, /id="referenceApply"[^>]*>Replace type, category &amp; engine count in draft/);
+  assert.match(html, /id="referenceApply"[^>]*>Replace type, category, engine count &amp; powerplant in draft/);
   assert.match(html, /id="referenceSource"[^>]*href="https:\/\/www.faa.gov/);
   assert.ok(html.indexOf('/js/aircraft-reference.js') < html.indexOf('/js/aircraft-profile-settings.js'));
   const css = fs.readFileSync(path.join(__dirname, '../src/public/css/aircraft-profiles.css'), 'utf8');
@@ -141,4 +144,35 @@ test('Clear announces no selection after Apply and never changes the applied/man
   ids.referenceClear.dispatch('click');
   assert.equal(ids.profileType.value, 'Test Rotor');
   assert.match(ids.referenceStatus.textContent, /No reference selected/);
+});
+
+test('Apply maps only explicit turbine/piston engine types and never wake category to helicopter class', async () => {
+  for (const engineType of ['turbine', 'piston', 'jet', 'electric', 'rocket', 'unknown', '', null, undefined]) {
+    for (const wakeCategory of ['Light', 'Medium', 'Heavy', 'Super', null]) {
+      const fixture = { ...row, engineType, wakeCategory };
+      const { picker, ids } = environment(async () => ({ ok: true, json: async () => ({ ...data, aircraft: [fixture], total: 1 }) }));
+      ids.profilePowerplant.value = engineType === 'piston' ? 'Turbine' : 'Piston';
+      ids.profileHelicopterClass.value = 'Intermediate';
+      ids.profileEngineModel.value = 'Exact installed model';
+      await picker.search();
+      ids.referenceResults.value = '0';
+      picker.apply();
+      assert.equal(ids.profilePowerplant.value, engineType === 'turbine' ? 'Turbine' : 'Piston');
+      assert.equal(ids.profileHelicopterClass.value, 'Intermediate');
+      assert.equal(ids.profileEngineModel.value, 'Exact installed model');
+      assert.match(ids.referenceStatus.textContent, /helicopter class.*manual/i);
+    }
+  }
+});
+
+test('manual powerplant/class input cancels stale reference suggestions', async () => {
+  for (const name of ['profilePowerplant', 'profileHelicopterClass']) {
+    const { picker, ids } = environment();
+    await picker.search(); ids.referenceResults.value = '0';
+    ids[name].value = name === 'profilePowerplant' ? 'Piston' : 'Heavy';
+    ids[name].dispatch('input');
+    picker.apply();
+    assert.equal(ids.profileType.value, '');
+    assert.equal(ids.referenceApply.disabled, true);
+  }
 });

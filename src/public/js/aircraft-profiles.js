@@ -16,7 +16,7 @@ window.AircraftProfiles = (() => {
             { label: 'Other aircraft', profiles: active.filter(p => !p.favourite && !p.last_used_at).sort(alphabetical) }
         ].filter(group => group.profiles.length);
     }
-    const detailFields = ['registration', 'aircraft_type', 'aircraft_category', 'engine_type', 'engine_model'];
+    const detailFields = ['registration', 'aircraft_type', 'aircraft_category', 'engine_type', 'engine_model', 'powerplant_type', 'helicopter_class'];
     function savedSelection(flight, mode, profiles) {
         let id = flight.aircraft_profile_id || null;
         const profile = (profiles || []).find(p => p.id === id && !p.archived);

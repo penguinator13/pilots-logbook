@@ -23,16 +23,31 @@ Saved flights retain their own aircraft-detail snapshots: changing or archiving 
 
 The v1.9.1 engine-model migration is additive and idempotent: existing profiles and flights have a blank/unknown model, with no inferred values or rewritten history. Legacy flight updates that omit `engine_model` preserve its saved value. The v1.9.0 profile migration is additive. It does not infer profiles or link/rewrite existing flights; create profiles deliberately after upgrading. Database backups include profiles. Older flight APIs and manual entry remain compatible.
 
-## ICAO aircraft reference (v1.10.0)
+## Optional aircraft metadata (v1.11.0)
+
+Profiles and Add/Edit Flight forms now include two independent, optional dropdowns:
+
+- **Powerplant** (`powerplant_type`): blank / unknown, `Turbine`, or `Piston`. This is separate from `engine_type` (Single Engine / Multi Engine) and the user-entered exact `engine_model`.
+- **Helicopter class** (`helicopter_class`): blank / unknown, `Light`, `Intermediate`, `Medium`, or `Heavy`. Confirm this manually using the classification appropriate to your operation. FAA `wakeCategory` is an ATC wake category, **not** a helicopter size class; it never populates this field.
+
+Explicit catalogue Apply derives powerplant only from `engineType: turbine` or `piston`. Unsupported/unknown engine types leave the draft powerplant unchanged. It never replaces helicopter class or exact engine model. Search alone changes no aircraft details.
+
+Both fields default to empty strings and are stored on each flight as historical snapshots, not joined from a mutable profile. Selecting a profile fills and locks them; Manual entry keeps and unlocks them. Edit keeps the saved snapshot; Duplicate detaches to Manual if either field (or any other aircraft detail) differs from the current profile. Profile edits/archival never rewrite history.
+
+Startup adds only two `TEXT NOT NULL DEFAULT ''` columns to each of `aircraft_profiles` and `flights`, with allowed-value checks; the migration is additive and idempotent. Existing values, associations and flight history are preserved, with no inferred/backfilled metadata. Legacy PUT requests omitting either field preserve its saved value; explicitly sending `""` clears it. Other strings, nulls and non-string values are rejected. Back up the SQLite database before upgrading; a full database backup includes this metadata (existing CSV/PDF formats are unchanged).
+
+The reference checkbox sizing fix is included in the v1.11.0 CSS cache key. `npm test` includes a static selector guard and optional-dropdown/migration/API/snapshot/controller regressions. `TEST_PORT=14011 npm test` can be used when the default test port 3999 is occupied. Real-browser layout and save checks remain maintainer verification.
+
+## ICAO aircraft reference
 
 In **Settings → Aircraft Profiles**, use the optional **ICAO aircraft reference** section:
 
 1. Search by ICAO designator, manufacturer or model. Helicopters are the default; enable **All aircraft** to broaden the reference search. Search is case-insensitive and ignores spaces/hyphens for matching only (`H125` finds `H-125`, `AS350` finds `AS-350`); published names are kept intact. It is local and returns up to 100 matching aliases; narrow the query when more matches exist.
 2. Choose a manufacturer/model alias in the native selector. A shared ICAO code (such as AS50) can have multiple aliases; choosing one does not identify an exact variant or installed engine. Search and selection alone never change the draft.
-3. Use **Replace type, category & engine count in draft** only when you intend to replace those draft fields, including during an existing-profile edit. The model becomes the editable Aircraft Type; models longer than the existing 50-character limit use the ICAO designator instead, with an explanatory message. Supported categories map to Helicopter/Aeroplane; unsupported categories and unknown engine counts keep their current draft values and are announced. Known engine counts map only to Single Engine/Multi Engine. A generic turbine/piston/jet class is **never** an exact engine model.
-4. Verify/refine the exact variant manually, enter the registration and any installed engine model, then save the profile separately. Engine model and all unrelated fields are never changed by the reference. Clear reference selection cancels suggestions without undoing or saving draft values. Cancel Edit discards the edit as before.
+3. Use **Replace type, category, engine count & powerplant in draft** only when you intend to replace those draft fields, including during an existing-profile edit. The model becomes the editable Aircraft Type; models longer than the existing 50-character limit use the ICAO designator instead, with an explanatory message. Supported categories map to Helicopter/Aeroplane; unsupported categories and unknown engine counts keep their current draft values and are announced. Known engine counts map only to Single Engine/Multi Engine; explicit turbine/piston engine types map to the separate Powerplant field. A generic turbine/piston/jet class is **never** an exact engine model.
+4. Verify/refine the exact variant manually, enter the registration and any installed engine model, then save the profile separately. Engine model, helicopter class and all unrelated fields are never changed by the reference. Clear reference selection cancels suggestions without undoing or saving draft values. Cancel Edit discards the edit as before.
 
-Manual entry remains available if the catalogue is missing or unavailable. Delayed searches never prefill anything automatically; editing, cancelling, saving or changing a query invalidates pending suggestions. There are no new database columns or migrations in v1.10.0, no automatic profile creation, and no changes to saved flight snapshots.
+Manual entry remains available if the catalogue is missing or unavailable. Delayed searches never prefill anything automatically; editing, cancelling, saving or changing a query invalidates pending suggestions. The reference never creates profiles automatically or changes saved flight snapshots. Its original v1.10.0 release had no schema migration; v1.11.0 adds the optional snapshot fields described above.
 
 The nearby FAA provenance link identifies the reference source/edition. The application reads the bundled `src/data/aircraft-types.json`; no upstream network access is required at runtime. The file uses `{source:{title,url,edition,...},aircraft:[{icao,manufacturer,model,category,engineCount,engineType,wakeCategory}]}`. Keep distinct manufacturer/model aliases for the same ICAO designator. Production builds must include the reviewed FAA dataset; the synthetic rows in tests are deliberately test-only, never a fallback catalogue. Restart after replacing the bundled catalogue.
 
