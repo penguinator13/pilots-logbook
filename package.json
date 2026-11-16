@@ -1,12 +1,12 @@
 {
   "name": "helicopter-logbook",
-  "version": "1.9.1",
+  "version": "1.10.0",
   "description": "Self-hosted helicopter pilot logbook application",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node test/smoke.test.js && node --test test/aircraft-profiles-ui.test.js"
+    "test": "node test/smoke.test.js && node --test test/aircraft-profiles-ui.test.js test/aircraft-reference.test.js test/aircraft-reference-ui.test.js"
   },
   "keywords": [
     "helicopter",

@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/css/styles.css?v=1.8.2">
     <script src="/js/appearance.js?v=1.8.2"></script>
     <link rel="stylesheet" href="/css/cockpit.css?v=1.8.2">
-    <link rel="stylesheet" href="/css/aircraft-profiles.css?v=1.9.1">
+    <link rel="stylesheet" href="/css/aircraft-profiles.css?v=1.10.0">
 </head>
 <body>
     <!-- Navigation -->
@@ -94,6 +94,27 @@
                         <h2 class="card-header" id="profileEditorTitle">Add Aircraft Profile</h2>
                         <p class="text-muted mb-3">Save a registration with its type, category and engine for quick flight entry. Editing or archiving a profile never rewrites saved flight details. Archiving removes it from new-flight choices and clears its default.</p>
                         <form id="aircraftProfileForm">
+                            <fieldset class="aircraft-reference" aria-describedby="referenceHelp">
+                                <legend>ICAO aircraft reference <span class="text-muted">(optional)</span></legend>
+                                <p id="referenceHelp" class="form-help">Search the bundled FAA reference, choose a manufacturer/model alias, then apply it to this draft. Searching or selecting never saves a profile. ICAO codes can cover several aliases and variants (including AS50); verify the exact aircraft variant and installed engine yourself.</p>
+                                <div class="form-group">
+                                    <label for="referenceSearch" class="form-label">Search ICAO, manufacturer or model</label>
+                                    <input type="search" id="referenceSearch" class="form-input" maxlength="100" autocomplete="off" placeholder="e.g., AS50, Airbus, Robinson" aria-describedby="referenceHelp">
+                                </div>
+                                <label class="profile-checkbox"><input type="checkbox" id="referenceAll"> All aircraft (helicopters only by default)</label>
+                                <button type="button" id="referenceSearchBtn" class="btn btn-secondary">Search reference</button>
+                                <p id="referenceStatus" class="form-help" role="status" aria-live="polite">Manual entry is always available. Search to load suggestions.</p>
+                                <div class="form-group">
+                                    <label for="referenceResults" class="form-label">Manufacturer / model alias</label>
+                                    <select id="referenceResults" class="form-select" aria-describedby="referenceStatus referenceReplaceHelp"><option value="">Search to choose an alias…</option></select>
+                                </div>
+                                <p id="referenceReplaceHelp" class="form-help">Apply explicitly replaces this draft's aircraft type, supported category and known single/multi-engine count — including when editing an existing profile. Exact engine model, registration and all other fields are kept. You can still edit the draft manually or Cancel Edit before saving.</p>
+                                <div class="profile-actions">
+                                    <button type="button" id="referenceApply" class="btn btn-secondary" disabled>Replace type, category &amp; engine count in draft</button>
+                                    <button type="button" id="referenceClear" class="btn btn-secondary">Clear reference selection</button>
+                                </div>
+                                <p class="form-help">Source: <a id="referenceSource" href="https://www.faa.gov/air_traffic/publications/atpubs/cnt_html/" target="_blank" rel="noopener noreferrer">FAA Aircraft Type Designators</a>. Reference only, not aircraft-specific certification data.</p>
+                            </fieldset>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="profileRegistration" class="form-label required">Registration</label>
@@ -733,6 +754,7 @@
     <script src="/js/common.js"></script>
     <script src="/js/settings.js?v=1.9.1"></script>
     <script src="/js/aircraft-profiles.js?v=1.9.1"></script>
-    <script src="/js/aircraft-profile-settings.js?v=1.9.1"></script>
+    <script src="/js/aircraft-reference.js?v=1.10.0"></script>
+    <script src="/js/aircraft-profile-settings.js?v=1.10.0"></script>
 </body>
 </html>

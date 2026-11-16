@@ -113,8 +113,9 @@ test('both flight pages load native profile controls and save integer/null assoc
     assert.match(form, /engine_model:\s*document\.getElementById\('engine_model'\)\.value\.trim\(\)/);
 });
 
-function settingsEnvironment(initial = []) {
+function settingsEnvironment(initial = [], reference = false) {
     const names = ['aircraftProfileForm', 'profileEditorTitle', 'profileRegistration', 'profileType', 'profileCategory', 'profileEngine', 'profileEngineModel', 'profileNickname', 'profileOperator', 'profileFavourite', 'profileDefault', 'profileSaveBtn', 'profileCancelBtn', 'profileShowArchived', 'profileList', 'profileSettingsStatus', 'profileSettingsRetry', 'profileTypeOptions'];
+    if (reference) names.push('referenceSearch', 'referenceAll', 'referenceSearchBtn', 'referenceResults', 'referenceApply', 'referenceClear', 'referenceStatus', 'referenceSource');
     const ids = Object.fromEntries(names.map(id => [id, new Element()]));
     ids.aircraftProfileForm.reset = () => { names.filter(id => /^profile(Registration|Type|EngineModel|Nickname|Operator)$/.test(id)).forEach(id => { ids[id].value = ''; }); ids.profileCategory.value = 'Helicopter'; ids.profileEngine.value = 'Single Engine'; ids.profileFavourite.checked = ids.profileDefault.checked = false; };
     ids.profileRegistration.focus = () => {};
@@ -138,6 +139,7 @@ function settingsEnvironment(initial = []) {
         return { ok: true, json: async () => profiles };
     } };
     vm.runInNewContext(fs.readFileSync(source, 'utf8'), context);
+    if (reference) vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/public/js/aircraft-reference.js'), 'utf8'), context);
     const script = path.join(__dirname, '../src/public/js/aircraft-profile-settings.js');
     vm.runInNewContext(fs.existsSync(script) ? fs.readFileSync(script, 'utf8') : '', context);
     assert.equal(typeof context.window.AircraftProfileSettings, 'function', 'settings controller exists');
@@ -421,4 +423,33 @@ test('default is eligible only on a fresh untouched blank add form', () => {
     for (const state of [{ mode: 'edit', blank: true }, { mode: 'duplicate', blank: true }, { mode: 'add', dirty: true, blank: true }, { mode: 'add', blank: false }]) {
         assert.equal(defaultProfile(profiles, state), null);
     }
+});
+
+test('settings integrates reference and clears old selections on edit, cancel and pending save without changing exact models', async () => {
+    const profile = { id: 1, registration: 'C-TEST', aircraft_type: 'Exact old variant', aircraft_category: 'Helicopter', engine_type: 'Single Engine', engine_model: 'Installed exact engine' };
+    const { settings, ids } = settingsEnvironment([profile], true);
+    await settings.ready;
+    assert.ok(settings.reference, 'settings owns reference controller');
+    const selectFixture = () => {
+        settings.reference.rows = [{ icao: 'TEST', manufacturer: 'TEST ONLY', model: 'Generic alias', category: 'helicopter', engineCount: 2 }];
+        ids.referenceResults.value = '0'; ids.referenceResults.dispatch('change');
+    };
+    selectFixture();
+    settings.edit(profile);
+    ids.referenceApply.dispatch('click');
+    assert.equal(ids.profileType.value, 'Exact old variant');
+    assert.equal(ids.profileEngineModel.value, 'Installed exact engine');
+    selectFixture();
+    settings.reset();
+    ids.referenceApply.dispatch('click');
+    assert.equal(ids.profileType.value, '');
+    selectFixture();
+    settings.setBusy(true);
+    assert.equal(ids.referenceSearchBtn.disabled, true);
+    assert.equal(ids.referenceApply.disabled, true);
+    assert.equal(ids.referenceClear.disabled, true);
+    ids.referenceApply.dispatch('click');
+    assert.equal(ids.profileType.value, '');
+    settings.setBusy(false);
+    assert.equal(ids.referenceApply.disabled, true, 'old selection invalidated by save');
 });

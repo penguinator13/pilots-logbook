@@ -9,6 +9,9 @@ docker-compose.yml
 
 # Data directory (will be mounted as volume)
 data/
+# Keep the reviewed offline reference in both test and runtime images.
+!src/data/
+!src/data/aircraft-types.json
 *.db
 
 # Environment files

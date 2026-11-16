@@ -3,6 +3,9 @@ node_modules/
 
 # Data directory (SQLite database)
 data/
+# Bundled reference is source code, never private runtime SQLite data.
+!src/data/
+!src/data/aircraft-types.json
 *.db
 *.db-journal
 *.db-shm
@@ -37,6 +40,9 @@ backup/
 # Build artifacts
 dist/
 build/
+__pycache__/
+.pytest_cache/
+.venv/
 
 # Claude Code
 .claude/

@@ -23,6 +23,23 @@ Saved flights retain their own aircraft-detail snapshots: changing or archiving 
 
 The v1.9.1 engine-model migration is additive and idempotent: existing profiles and flights have a blank/unknown model, with no inferred values or rewritten history. Legacy flight updates that omit `engine_model` preserve its saved value. The v1.9.0 profile migration is additive. It does not infer profiles or link/rewrite existing flights; create profiles deliberately after upgrading. Database backups include profiles. Older flight APIs and manual entry remain compatible.
 
+## ICAO aircraft reference (v1.10.0)
+
+In **Settings → Aircraft Profiles**, use the optional **ICAO aircraft reference** section:
+
+1. Search by ICAO designator, manufacturer or model. Helicopters are the default; enable **All aircraft** to broaden the reference search. Search is case-insensitive and ignores spaces/hyphens for matching only (`H125` finds `H-125`, `AS350` finds `AS-350`); published names are kept intact. It is local and returns up to 100 matching aliases; narrow the query when more matches exist.
+2. Choose a manufacturer/model alias in the native selector. A shared ICAO code (such as AS50) can have multiple aliases; choosing one does not identify an exact variant or installed engine. Search and selection alone never change the draft.
+3. Use **Replace type, category & engine count in draft** only when you intend to replace those draft fields, including during an existing-profile edit. The model becomes the editable Aircraft Type; models longer than the existing 50-character limit use the ICAO designator instead, with an explanatory message. Supported categories map to Helicopter/Aeroplane; unsupported categories and unknown engine counts keep their current draft values and are announced. Known engine counts map only to Single Engine/Multi Engine. A generic turbine/piston/jet class is **never** an exact engine model.
+4. Verify/refine the exact variant manually, enter the registration and any installed engine model, then save the profile separately. Engine model and all unrelated fields are never changed by the reference. Clear reference selection cancels suggestions without undoing or saving draft values. Cancel Edit discards the edit as before.
+
+Manual entry remains available if the catalogue is missing or unavailable. Delayed searches never prefill anything automatically; editing, cancelling, saving or changing a query invalidates pending suggestions. There are no new database columns or migrations in v1.10.0, no automatic profile creation, and no changes to saved flight snapshots.
+
+The nearby FAA provenance link identifies the reference source/edition. The application reads the bundled `src/data/aircraft-types.json`; no upstream network access is required at runtime. The file uses `{source:{title,url,edition,...},aircraft:[{icao,manufacturer,model,category,engineCount,engineType,wakeCategory}]}`. Keep distinct manufacturer/model aliases for the same ICAO designator. Production builds must include the reviewed FAA dataset; the synthetic rows in tests are deliberately test-only, never a fallback catalogue. Restart after replacing the bundled catalogue.
+
+**Authenticated API:** `GET /api/aircraft-reference?q=AS50&category=helicopter` (`category=all` is optional). Returns `{source,aircraft,total}` with at most 100 rows and the full matching `total`. Queries are limited to 100 characters; invalid query shapes/categories return 400, unauthenticated access returns 401, and unavailable local data returns 503. The endpoint is read-only and never inserts Aircraft Types, profiles or flights.
+
+**Tests:** `npm test` runs smoke/integration, migration/snapshot and UI-controller tests, including reference auth/search/filter/aliases, read-only database snapshots, explicit draft selection, manual/edit/cancel/error flows and delayed/superseded responses. Browser/theme and migration rehearsal against private production snapshots should be performed before deployment.
+
 ## Screenshots
 
 | Dashboard | Add Flight |

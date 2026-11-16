@@ -24,6 +24,21 @@
 .profile-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .profile-actions button { min-width: 44px; }
 .profile-error { color: var(--danger-color); font-weight: 600; }
+/* A fieldset must be allowed to shrink below the longest native option. */
+.aircraft-reference {
+    min-width: 0;
+    padding: 1rem;
+    margin: 0 0 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--surface);
+    overflow-wrap: anywhere;
+}
+.aircraft-reference legend { padding-inline: 0.35rem; font-weight: 600; }
+.aircraft-reference .form-help { margin-block: 0.75rem; }
+.aircraft-reference :is(input, select) { width: 100%; min-width: 0; }
+.aircraft-reference .btn { white-space: normal; overflow-wrap: anywhere; }
+.aircraft-reference a { color: var(--primary-color); }
 #aircraftProfileForm { scroll-margin-top: 100px; }
 #flightForm :is(#aircraft_type:disabled, #registration:read-only) { color: var(--text-primary); opacity: 1; background: var(--surface-hover); }
 /* An extra Settings section must not push native tabs off a narrow viewport. */

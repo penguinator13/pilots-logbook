@@ -11,6 +11,7 @@ window.AircraftProfileSettings = class AircraftProfileSettings {
         this.el('profileSettingsRetry').addEventListener('click', () => { this.ready = this.load(); });
         this.ready = this.load();
         this.loadTypes();
+        if (window.AircraftReference && this.el('referenceSearch')) this.reference = new window.AircraftReference(this);
     }
     el(id) { return document.getElementById(id); }
     message(text, error = false) {
@@ -49,6 +50,7 @@ window.AircraftProfileSettings = class AircraftProfileSettings {
         }
     }
     reset() {
+        this.reference?.clear();
         this.editing = null;
         this.form.reset();
         this.el('profileDefault').disabled = false;
@@ -58,6 +60,7 @@ window.AircraftProfileSettings = class AircraftProfileSettings {
     }
     edit(profile) {
         if (this.busy) return;
+        this.reference?.clear();
         this.editing = profile;
         const fields = { profileRegistration: 'registration', profileType: 'aircraft_type', profileCategory: 'aircraft_category', profileEngine: 'engine_type', profileEngineModel: 'engine_model', profileNickname: 'nickname', profileOperator: 'operator' };
         Object.entries(fields).forEach(([id, key]) => { this.el(id).value = profile[key] || ''; });
@@ -140,6 +143,11 @@ window.AircraftProfileSettings = class AircraftProfileSettings {
     }
     setBusy(busy) {
         this.busy = busy;
+        if (this.reference) {
+            if (busy) this.reference.clear();
+            for (const id of ['referenceSearchBtn', 'referenceClear']) this.el(id).disabled = busy;
+            this.el('referenceApply').disabled = true;
+        }
         if (busy) {
             this.disabledFields = Array.from(this.form.querySelectorAll('input, select, textarea'), field => [field, field.disabled]);
             this.disabledFields.push([this.el('profileShowArchived'), this.el('profileShowArchived').disabled]);

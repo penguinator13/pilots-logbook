@@ -88,6 +88,9 @@ const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart
   assert.strictEqual(r.status, 404);
   assert.strictEqual((await r.json()).error, 'Not found');
 
+  r = await api('GET', '/api/aircraft-reference');
+  assert.strictEqual(r.status, 401, 'reference API requires a session');
+
   // Login
   r = await api('POST', '/api/auth/login', { username: 'tester', password: 'wrong' });
   assert.strictEqual(r.status, 401);
@@ -217,6 +220,26 @@ const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart
 
   require('./aircraft-profiles-migration.test')();
   await require('./aircraft-profiles.test')({ api, expect, dbPath, todayStr });
+
+  // Reference searches cannot create profiles or rewrite any saved aircraft/flight details.
+  const referenceDb = new (require('better-sqlite3'))(dbPath, { readonly: true });
+  const snapshot = () => JSON.stringify(['aircraft_profiles', 'flights', 'aircraft_types'].map(table => referenceDb.prepare(`SELECT * FROM ${table} ORDER BY id`).all()));
+  try {
+    const before = snapshot();
+    for (const query of ['', '?q=AS50', '?category=all&q=Robinson']) {
+      const response = await api('GET', '/api/aircraft-reference' + query);
+      const cataloguePath = path.join(__dirname, '../src/data/aircraft-types.json');
+      const expected = fs.existsSync(cataloguePath) ? 200 : 503;
+      const result = await expect(response, expected, 'local aircraft reference');
+      if (expected === 200) {
+        assert.ok(Array.isArray(result.aircraft));
+        assert.ok(result.aircraft.length <= 100);
+        assert.ok(result.source.url.startsWith('https://www.faa.gov/'));
+        if (query === '?q=AS50') assert.ok(result.aircraft.some(row => row.icao === 'AS50'));
+      }
+    }
+    assert.strictEqual(snapshot(), before, 'reference queries leave all profile/type/flight rows byte-for-byte unchanged');
+  } finally { referenceDb.close(); }
 
   console.log('All smoke tests passed');
   child.kill('SIGTERM');
